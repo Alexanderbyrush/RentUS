@@ -30,7 +30,15 @@ class Contract extends Model
 
     public function ratings(){return $this->hasMany(Rating::class);}
     
-    public function user(){return $this->belongsTo(User::class);}
+    public function landlord()
+    {
+        return $this->belongsTo(User::class, 'landlord_id');
+    }
+
+    public function tenant()
+    {
+        return $this->belongsTo(User::class, 'tenant_id');
+    }
 
     public function rentalRequest(){return $this->hasOne(RentalRequest::class);}
 

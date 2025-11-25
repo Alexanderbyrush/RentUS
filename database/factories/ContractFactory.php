@@ -23,7 +23,8 @@ class ContractFactory extends Factory
             'accepted_by_tenant' => $this->faker->randomElement(['si', 'no']),
             'tenant_acceptance_date' => $this->faker->date('Y-m-d'),
             'property_id' => Property::factory(),
-            'user_id' => User::factory(),
+            'landlord_id' => User::factory(),
+            'tenant_id' => User::factory(),
         ];
     }
 }

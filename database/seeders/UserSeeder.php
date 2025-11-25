@@ -19,7 +19,7 @@ class UserSeeder extends Seeder
             'id_documento' => '1234567890',
             'status' => 'active',
             'email_verified_at' => now(),
-            'password' => 'clave_generica',
+            'password' => 'usuario@example.com',
             'remember_token' => 'token12345',
         ]);
 

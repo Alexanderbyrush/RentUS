@@ -22,17 +22,18 @@ return new class extends Migration
             $table->string('accepted_by_tenant');
             $table->string('tenant_acceptance_date');
             $table->unsignedBigInteger('property_id')->unique();
-            $table->unsignedBigInteger('user_id')->unique();
             $table->foreign('property_id')
-            ->references('id')
-            ->on('properties')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
-            $table->foreign('user_id')
-            ->references('id')
-            ->on('users')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
+                ->references('id')
+                ->on('properties')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+
+            $table->unsignedBigInteger('landlord_id'); // arrendador
+            $table->unsignedBigInteger('tenant_id');   // arrendatario
+
+            $table->foreign('landlord_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreign('tenant_id')->references('id')->on('users')->cascadeOnDelete();
+
             $table->timestamps();
         });
     }

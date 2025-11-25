@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('num_bathrooms');
             $table->string('included_services');
             $table->date('publication_date');
-            $table->string('image_url');
+            $table->text('image_url');
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')
             ->references('id')
