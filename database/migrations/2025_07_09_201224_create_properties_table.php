@@ -25,6 +25,8 @@ return new class extends Migration
             $table->string('included_services');
             $table->date('publication_date');
             $table->text('image_url');
+            $table->string('lat');
+            $table->string('lng');
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')
             ->references('id')
