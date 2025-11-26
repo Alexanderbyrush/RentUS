@@ -31,6 +31,8 @@ class PropertyFactory extends Factory
             ]),
             'publication_date' => $this->faker->date(),
             'image_url' => $this->faker->imageUrl(640, 480, 'house', true, 'house'),
+            'lat' => $this->faker->latitude(),
+            'lng' => $this->faker->longitude(),
             'user_id' => User::factory(),
         ];
     }
