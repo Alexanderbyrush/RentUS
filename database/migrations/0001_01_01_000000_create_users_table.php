@@ -22,6 +22,13 @@ return new class extends Migration
             $table->string('status');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+
+            // IMPORTANTE: Usar longText para base64 (imágenes grandes)
+            $table->longText('photo')->nullable();
+
+            $table->text('bio')->nullable();
+            $table->string('department')->nullable();
+            $table->string('city')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
