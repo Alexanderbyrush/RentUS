@@ -10,29 +10,38 @@ class Property extends Model
 {
     use HasFactory, HasSmartScopes;
 
-    // Campos que se pueden asignar masivamente (por create, update, etc.)
+    // Campos asignables masivamente
     protected $fillable = [
-        'title',             // Título de la propiedad
-        'description',       // Descripción de la propiedad
-        'address',           // Dirección de la propiedad
-        'city',              // Ciudad donde se encuentra la propiedad 
-        'status',            // Estado de la propiedad (disponible, alquilada, etc.)
-        'monthly_price',     // Precio mensual de la propiedad
-        'area_m2',           // Área de la propiedad en metros cuadrados
-        'num_bedrooms',      // Número de habitaciones
-        'num_bathrooms',     // Número de baños
-        'included_services', // Servicios incluidos (agua, luz, internet, etc.)
-        'publication_date',  // Fecha de publicación de la propiedad
-        'image_url',         // URL de la imagen de la propiedad
-        'user_id'            // ID del usuario propietario de la propiedad
+        'title',
+        'description',
+        'address',
+        'city',
+        'status',
+        'monthly_price',
+        'area_m2',
+        'num_bedrooms',
+        'num_bathrooms',
+        'included_services',
+        'publication_date',
+        'image_url',
+        'user_id',
+
+        // Necesarios para integrar Leaflet y registrar coordenadas
+        'lat',
+        'lng'
     ];
 
-    function user(){return $this->belongsTo(User::class);}
+    // Cast para JSON
+    protected $casts = [
+        'included_services' => 'array',
+        'publication_date'  => 'date',
+        'monthly_price'     => 'decimal:2',
+        'lat'               => 'decimal:7',
+        'lng'               => 'decimal:7',
+    ];
 
-    function maintenances(){return $this->hasMany(Maintenance::class);}
-
-    function contracts(){return $this->hasMany(Contract::class);}
-
-    function rentalRequests(){return $this->hasMany(RentalRequest::class);}
-
+    function user() { return $this->belongsTo(User::class); }
+    function maintenances() { return $this->hasMany(Maintenance::class); }
+    function contracts() { return $this->hasMany(Contract::class); }
+    function rentalRequests() { return $this->hasMany(RentalRequest::class); }
 }
