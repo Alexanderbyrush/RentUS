@@ -74,6 +74,9 @@ Route::middleware('auth:api')->group(function () {
         Route::get('{id}', [PaymentController::class, 'show']);
         Route::put('{id}', [PaymentController::class, 'update']);
         Route::delete('{id}', [PaymentController::class, 'destroy']);
+        Route::get('my-pending', [PaymentController::class, 'myPendingPayments']); // Recibos pendientes del usuario logueado
+        Route::post('{payment}/simulate-pay', [PaymentController::class, 'simulatePayment']); // Simulación de pago
+        Route::get('{payment}/receipt', [PaymentController::class, 'downloadReceipt']); // Descargar comprobante
     });
 
     // Ratings (CRUD)
@@ -102,6 +105,7 @@ Route::middleware('auth:api')->group(function () {
         Route::put('{id}', [ReportController::class, 'update']);
         Route::delete('{id}', [ReportController::class, 'destroy']);
     });
+
 
 });
 

@@ -20,10 +20,19 @@ class Contract extends Model
         'support_validation_date',    // Fecha en que fue validado por soporte
         'accepted_by_tenant',         // Aceptación por parte del inquilino (booleano)
         'tenant_acceptance_date',     // Fecha en que fue aceptado por el inquilino
-        'property_id',                // ID de la propiedad relacionada
+        'property_id', 
+        'landlord_id', // ¡Ojo! Añadir los IDs de las FK al fillable.
+        'tenant_id',               // ID de la propiedad relacionada
         'user_id'                     // ID del usuario (inquilino o arrendador)
     ];
-
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'validated_by_support' => 'boolean',
+        'accepted_by_tenant' => 'boolean',
+        'support_validation_date' => 'datetime',
+        'tenant_acceptance_date' => 'datetime',
+    ];
     public function property(){return $this->belongsTo(Property::class);}
 
     public function payments(){return $this->hasMany(Payment::class);}

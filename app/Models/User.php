@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+//use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Traits\HasSmartScopes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+
+
+use App\Models\UserPaymentMethod;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -50,6 +53,10 @@ class User extends Authenticatable implements JWTSubject
     public function rentalRequest(){return $this->hasMany(RentalRequest::class);}
 
     public function ratings(){return $this->hasMany(Rating::class);}
+
+    public function paymentMethods(){return $this->hasMany(UserPaymentMethod::class);}
+
+
 
     /**
      * The attributes that are mass assignable.
