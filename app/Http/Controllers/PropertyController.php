@@ -24,36 +24,6 @@ class PropertyController extends Controller
     {
         return response()->json($property);
     }
-<<<<<<< HEAD
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'title'             => 'required|string|max:255',
-            'description'       => 'required|string',
-            'address'           => 'required|string',
-            'city'              => 'nullable|string',
-            'status'            => 'nullable|string',
-            'monthly_price'     => 'required|numeric',
-            'area_m2'           => 'nullable|numeric',
-            'num_bedrooms'      => 'nullable|integer',
-            'num_bathrooms'     => 'nullable|integer',
-            'included_services' => 'nullable|array',
-            'publication_date'  => 'nullable|date',
-            'image_url'         => 'nullable|string',
-            'lat'               => 'nullable|numeric',
-            'lng'               => 'nullable|numeric',
-        ]);
-
-        $validated['user_id'] = auth()->id(); // IMPORTANTE
-
-        $property = Property::create($validated);
-
-        return response()->json([
-            'message' => 'Property created successfully',
-            'property' => $property
-        ], 201);
-    }
-=======
 
     /**
      * Crear nueva propiedad.
@@ -81,7 +51,6 @@ class PropertyController extends Controller
         $validated['user_id'] = auth()->id();
 
         $property = Property::create($validated);
->>>>>>> 6ae3f06e19d219ed2da797549a33b90f6ee70f7a
 
         return response()->json([
             'message'  => 'Property created successfully',
@@ -176,8 +145,6 @@ class PropertyController extends Controller
             'property' => $property
         ]);
     }
-<<<<<<< HEAD
-=======
 
     /**
      * Contar total de propiedades.
@@ -188,5 +155,4 @@ class PropertyController extends Controller
             'count' => Property::count()
         ]);
     }
->>>>>>> 6ae3f06e19d219ed2da797549a33b90f6ee70f7a
 }
