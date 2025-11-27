@@ -13,24 +13,46 @@ return new class extends Migration
     {
         Schema::create('rental_requests', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('contract_id')->unique();
-            $table->unsignedBigInteger('property_id')->unique();
-            $table->unsignedBigInteger('user_id')->unique();
-            $table->foreign('contract_id')
-            ->references('id')
-            ->on('contracts')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
+            $table->unsignedBigInteger('property_id');
+            $table->unsignedBigInteger('user_id'); // inquilino
+            $table->unsignedBigInteger('owner_id'); // dueño
+
+            // Fecha y hora solicitada
+            $table->date('requested_date');
+            $table->time('requested_time');
+
+            // Contra-propuesta (si el dueño propone otra fecha)
+            $table->date('counter_date')->nullable();
+            $table->time('counter_time')->nullable();
+
+            // Estados: pending, accepted, rejected, counter_proposed, visit_completed, contract_sent
+            $table->enum('status', [
+                'pending',
+                'accepted',
+                'rejected',
+                'counter_proposed',
+                'visit_completed',
+                'contract_sent'
+            ])->default('pending');
+
+            // Para liberar el botón después de la visita
+            $table->timestamp('visit_end_time')->nullable();
+
             $table->foreign('property_id')
                 ->references('id')
                 ->on('properties')
-                ->onDelete('cascade')
-                ->onUpdate('cascade');
+                ->onDelete('cascade');
+
             $table->foreign('user_id')
                 ->references('id')
                 ->on('users')
-                ->onDelete('cascade')
-                ->onUpdate('cascade');
+                ->onDelete('cascade');
+
+            $table->foreign('owner_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
+
             $table->timestamps();
         });
     }
