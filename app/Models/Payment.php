@@ -14,7 +14,6 @@ class Payment extends Model
 
     // Campos que se pueden asignar masivamente (por create, update, etc.)
     protected $fillable = [
-        'due_date',
         'payment_date',     // Fecha en la que se realizó el pago
         'amount',           // Monto del pago
         'status',           // Estado del pago (ej: pendiente, aprobado, rechazado)
@@ -22,9 +21,5 @@ class Payment extends Model
         'receipt_path',     // Ruta al comprobante o recibo de pago
         'contract_id'       // ID del contrato asociado al pago
     ];
-    protected $casts = [
-        'due_date' => 'date',
-        'payment_date' => 'datetime',
-        'amount' => 'decimal:2',
-    ];
+
 }

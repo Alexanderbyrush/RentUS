@@ -13,14 +13,14 @@ return new class extends Migration
     {
         Schema::create('contracts', function (Blueprint $table) {
             $table->id();
-            $table->date('start_date');
-            $table->date('end_date');
+            $table->string('start_date');
+            $table->string('end_date');
             $table->string('status');
-            $table->string('document_path')->nullable();
-            $table->boolean('validated_by_support')->default(false);
-            $table->timestamp('support_validation_date')->nullable();
-            $table->boolean('accepted_by_tenant')->default(false);
-            $table->timestamp('tenant_acceptance_date')->nullable();
+            $table->string('document_path');
+            $table->string('validated_by_support');
+            $table->string('support_validation_date');
+            $table->string('accepted_by_tenant');
+            $table->string('tenant_acceptance_date');
             $table->unsignedBigInteger('property_id')->unique();
             $table->foreign('property_id')
                 ->references('id')

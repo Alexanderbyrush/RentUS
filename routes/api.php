@@ -10,6 +10,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\PaymentMockController;
 
 // RUTAS DE AUTENTICACIÓN PÚBLICAS
 Route::prefix('auth')->group(function () {
@@ -74,9 +75,8 @@ Route::middleware('auth:api')->group(function () {
         Route::get('{id}', [PaymentController::class, 'show']);
         Route::put('{id}', [PaymentController::class, 'update']);
         Route::delete('{id}', [PaymentController::class, 'destroy']);
-        Route::get('my-pending', [PaymentController::class, 'myPendingPayments']); // Recibos pendientes del usuario logueado
-        Route::post('{payment}/simulate-pay', [PaymentController::class, 'simulatePayment']); // Simulación de pago
-        Route::get('{payment}/receipt', [PaymentController::class, 'downloadReceipt']); // Descargar comprobante
+
+        Route::post('mock/{contract}', [PaymentMockController::class, 'pay']);
     });
 
     // Ratings (CRUD)
@@ -105,7 +105,6 @@ Route::middleware('auth:api')->group(function () {
         Route::put('{id}', [ReportController::class, 'update']);
         Route::delete('{id}', [ReportController::class, 'destroy']);
     });
-
 
 });
 
