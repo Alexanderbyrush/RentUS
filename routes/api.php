@@ -13,29 +13,13 @@ use App\Http\Controllers\ReportController;
 use App\Models\User;
 use App\Models\Property;
 
-<<<<<<< HEAD
-/*
-|--------------------------------------------------------------------------
-| Authentication Routes
-|--------------------------------------------------------------------------
-*/
-=======
 // RUTAS DE AUTENTICACIÓN PÚBLICAS
->>>>>>> 3657076c5f81cc99851e4fe4bb519c2eddeb1c2b
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
 });
 
-<<<<<<< HEAD
-/*
-|--------------------------------------------------------------------------
-| Public Endpoints
-|--------------------------------------------------------------------------
-*/
-=======
 // RUTAS PÚBLICAS (solo lectura)
->>>>>>> 3657076c5f81cc99851e4fe4bb519c2eddeb1c2b
 Route::get('users', [UserController::class, 'index']);
 Route::get('properties', [PropertyController::class, 'index']);
 // Primero ruta específica
@@ -50,44 +34,6 @@ Route::get('ratings', [RatingController::class, 'index']);
 Route::get('maintenances', [MaintenanceController::class, 'index']);
 Route::get('reports', [ReportController::class, 'index']);
 
-<<<<<<< HEAD
-/*
-|--------------------------------------------------------------------------
-| Dashboard Metrics (Public or Private depending on your policy)
-| Actualmente los dejamos públicos porque tu frontend los llama sin token.
-|--------------------------------------------------------------------------
-*/
-
-// Total de propiedades
-Route::get('properties/count', function () {
-    return response()->json([
-        'count' => Property::count()
-    ]);
-});
-
-// Total de clientes activos (ajusta al criterio real)
-Route::get('users/active/count', function () {
-    return response()->json([
-        'count' => User::where('status', 'active')->count()
-    ]);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Private Endpoints (require token)
-|--------------------------------------------------------------------------
-*/
-Route::middleware('auth:api')->group(function () {
-
-    // Properties
-    Route::post('properties', [PropertyController::class, 'store']);
-    Route::put('properties/{property}', [PropertyController::class, 'update']);
-    Route::delete('properties/{property}', [PropertyController::class, 'destroy']);
-    Route::post('properties/{id}/point', [PropertyController::class, 'savePoint']);
-
-    // Other protected features could be added here...
-});
-=======
 // RUTAS PROTEGIDAS (requieren login)
 // RUTAS PROTEGIDAS
 Route::middleware('auth:api')->group(function () {
@@ -166,4 +112,3 @@ Route::middleware('auth:api')->group(function () {
 
 });
 
->>>>>>> 3657076c5f81cc99851e4fe4bb519c2eddeb1c2b
