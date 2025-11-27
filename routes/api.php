@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\ContractController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\RentalRequestController;
@@ -47,24 +48,13 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{id}', [UserController::class, 'destroy']);
     });
 
-    // Properties (CRUD)
     Route::prefix('properties')->group(function () {
         Route::get('/', [PropertyController::class, 'index']);
         Route::post('/', [PropertyController::class, 'store']);
-        Route::get('{id}', [PropertyController::class, 'show']);
-        Route::put('{id}', [PropertyController::class, 'update']);
-        Route::delete('{id}', [PropertyController::class, 'destroy']);
-        Route::post('{id}/point', [PropertyController::class, 'savePoint']); // acción especial del módulo
-    });
-
-    // Contracts (CRUD + rutas especiales)
-    Route::prefix('contracts')->group(function () {
-        Route::get('stats', [ContractController::class, 'stats']);
-        Route::get('/', [ContractController::class, 'index']);
-        Route::post('/', [ContractController::class, 'store']);
-        Route::get('{id}', [ContractController::class, 'show']);
-        Route::put('{id}', [ContractController::class, 'update']);
-        Route::delete('{id}', [ContractController::class, 'destroy']);
+        Route::get('{property}', [PropertyController::class, 'show']);
+        Route::put('{property}', [PropertyController::class, 'update']);
+        Route::delete('{property}', [PropertyController::class, 'destroy']);
+        Route::post('{property}/point', [PropertyController::class, 'savePoint']);
     });
 
     // Payments (CRUD)
@@ -103,5 +93,32 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{id}', [ReportController::class, 'destroy']);
     });
 
-});
+    Route::post('/rental-requests', [RentalRequestController::class, 'create']); // Crear solicitud
+    Route::get('/rental-requests/my-requests', [RentalRequestController::class, 'getMyRequests']); // Mis solicitudes
+    Route::put('/rental-requests/{id}/accept-counter', [RentalRequestController::class, 'acceptCounterProposal']); // Aceptar contra-propuesta
+    Route::put('/rental-requests/{id}/reject-counter', [RentalRequestController::class, 'rejectCounterProposal']); // Rechazar contra-propuesta
 
+    // DUEÑO
+    Route::get('/rental-requests/owner', [RentalRequestController::class, 'getOwnerRequests']); // Solicitudes recibidas
+    Route::put('/rental-requests/{id}/accept', [RentalRequestController::class, 'acceptRequest']); // Aceptar solicitud
+    Route::put('/rental-requests/{id}/reject', [RentalRequestController::class, 'rejectRequest']); // Rechazar solicitud
+    Route::put('/rental-requests/{id}/counter-propose', [RentalRequestController::class, 'counterPropose']); // Proponer otra fecha
+    Route::get('/rental-requests/{id}/visit-status', [RentalRequestController::class, 'checkVisitStatus']); // Verificar si puede continuar
+    Route::post('/rental-requests/send-contract', [RentalRequestController::class, 'sendContractTerms']); // Enviar términos del contrato
+
+    // GENERAL
+    Route::get('/rental-requests/{id}', [RentalRequestController::class, 'getDetails']); // Detalles
+    Route::delete('/rental-requests/{id}', [RentalRequestController::class, 'cancel']); // Cancelar
+
+    Route::get('/notifications', [NotificationController::class, 'index']); // Todas
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']); // No leídas
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']); // Contador
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']); // Marcar como leída
+    Route::put('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']); // Marcar todas
+    Route::delete('/notifications/{id}', [NotificationController::class, 'delete']); // Eliminar
+
+    Route::get('/contracts', [ContractController::class, 'index']); // Todos mis contratos
+    Route::get('/contracts/stats', [ContractController::class, 'stats']); // Estadísticas
+    Route::put('/contracts/{id}/accept', [ContractController::class, 'acceptContract']); // Inquilino acepta contrato
+    Route::put('/contracts/{id}/reject', [ContractController::class, 'rejectContract']);
+});

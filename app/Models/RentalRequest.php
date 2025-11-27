@@ -2,24 +2,67 @@
 
 namespace App\Models;
 
-use App\Traits\HasSmartScopes;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class RentalRequest extends Model
 {
-    use HasFactory, HasSmartScopes;
-    // Campos que se pueden asignar masivamente (por create, update, etc.)
+    use HasFactory;
+
     protected $fillable = [
-        'contract_id',   // ID del contrato asociado a la solicitud de alquiler
-        'property_id',   // ID de la propiedad asociada a la solicitud de alquiler
-        'user_id'        // ID del usuario que realiza la solicitud
+        'property_id',
+        'user_id',
+        'owner_id',
+        'requested_date',
+        'requested_time',
+        'counter_date',
+        'counter_time',
+        'status',
+        'visit_end_time',
     ];
 
-    public function contract(){return $this->belongsTo(Contract::class);}
+    protected $casts = [
+        'requested_date' => 'datetime:Y-m-d H:i:s',
+        'visit_end_time' => 'datetime:Y-m-d H:i:s',
+        'counter_date' => 'date',
+    ];
 
-    public function property(){return $this->hasMany(Property::class);}
+    // Relación con la propiedad
+    public function property()
+    {
+        return $this->belongsTo(Property::class);
+    }
 
-    public function user(){return $this->belongsTo(User::class);}
+    // Relación con el inquilino (user)
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
+    // Relación con el dueño (owner)
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    // Scopes útiles
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeAccepted($query)
+    {
+        return $query->where('status', 'accepted');
+    }
+
+    public function scopeForUser($query, $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopeForOwner($query, $ownerId)
+    {
+        return $query->where('owner_id', $ownerId);
+    }
 }
