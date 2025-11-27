@@ -11,6 +11,8 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\ReportController;
+use App\Models\User;
+use App\Models\Property;
 
 // RUTAS DE AUTENTICACIÓN PÚBLICAS
 Route::prefix('auth')->group(function () {
@@ -21,7 +23,12 @@ Route::prefix('auth')->group(function () {
 // RUTAS PÚBLICAS (solo lectura)
 Route::get('users', [UserController::class, 'index']);
 Route::get('properties', [PropertyController::class, 'index']);
+// Primero ruta específica
+Route::get('properties/count', [PropertyController::class, 'count']);
+
+Route::get('properties', [PropertyController::class, 'index']);
 Route::get('properties/{property}', [PropertyController::class, 'show']);
+
 Route::get('contracts', [ContractController::class, 'index']);
 Route::get('payments', [PaymentController::class, 'index']);
 Route::get('ratings', [RatingController::class, 'index']);
