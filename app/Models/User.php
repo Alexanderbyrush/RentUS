@@ -24,11 +24,7 @@ class User extends Authenticatable implements JWTSubject
         'id_documento',          // Documento de identificación del usuario
         'status',                // Estado del usuario (activo, inactivo, etc.)
         'registration_date',     // Fecha de registro del usuario
-        'password',                // Contraseña del usuario (sin hash, se usa para autenticación)
-        'photo',
-        'bio',
-        'department',
-        'city'
+        'password'               // Contraseña del usuario (sin hash, se usa para autenticación)
     ];
 
     // Ocultar campos sensibles en respuestas JSON
@@ -43,35 +39,17 @@ class User extends Authenticatable implements JWTSubject
         'email_verified_at' => 'datetime'
     ];
 
-    public function properties()
-    {
-        return $this->hasMany(Property::class);
-    }
+    public function properties(){return $this->hasMany(Property::class);}
 
-    public function contracts()
-    {
-        return $this->hasMany(Contract::class);
-    }
+    public function contracts(){return $this->hasMany(Contract::class);}
 
-    public function reports()
-    {
-        return $this->hasMany(Report::class);
-    }
+    public function reports(){return $this->hasMany(Report::class);}
 
-    public function maintenances()
-    {
-        return $this->hasMany(Maintenance::class);
-    }
+    public function maintenances(){return $this->hasMany(Maintenance::class);}
 
-    public function rentalRequest()
-    {
-        return $this->hasMany(RentalRequest::class);
-    }
+    public function rentalRequest(){return $this->hasMany(RentalRequest::class);}
 
-    public function ratings()
-    {
-        return $this->hasMany(Rating::class);
-    }
+    public function ratings(){return $this->hasMany(Rating::class);}
 
     public function notifications()
     {
@@ -104,7 +82,7 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
-    public function getJWTIdentifier()
+        public function getJWTIdentifier()
     {
         return $this->getKey(); // normalmente es el id
     }
