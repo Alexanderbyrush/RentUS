@@ -341,7 +341,7 @@ class RentalRequestController extends Controller
             'property_id' => 'required|exists:properties,id',
             'tenant_id' => 'required|exists:users,id',
             'landlord_id' => 'required|exists:users,id',
-            'start_date' => 'required|date|after_or_equal:today',
+            'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'monthly_price' => 'required|numeric|min:0',
             'deposit' => 'required|numeric|min:0',
@@ -368,43 +368,15 @@ class RentalRequestController extends Controller
 
         // Verificar que la visita ya terminó
         if ($rentalRequest->visit_end_time) {
-            try {
-                $visitEnd = Carbon::parse($rentalRequest->visit_end_time);
-                if (Carbon::now()->lt($visitEnd)) {
-                    return response()->json([
-                        'message' => 'Debes esperar a que termine la visita programada'
-                    ], 400);
-                }
-            } catch (\Exception $e) {
-                return response()->json(['message' => 'Error al procesar la fecha de visita'], 400);
+            $visitEnd = Carbon::parse($rentalRequest->visit_end_time);
+            if (Carbon::now()->lt($visitEnd)) {
+                return response()->json([
+                    'message' => 'Debes esperar a que termine la visita programada'
+                ], 400);
             }
         }
 
-        // Verificar que no exista un contrato activo para la propiedad
-        $existingContract = Contract::where('property_id', $validated['property_id'])
-            ->where('status', 'pending')
-            ->first();
-        if ($existingContract) {
-            return response()->json(['message' => 'Ya existe un contrato activo para esta propiedad'], 400);
-        }
-
-
-        // Crear el contrato con estado pendiente
-        $contract = Contract::create([
-            'property_id' => $validated['property_id'],
-            'landlord_id' => $validated['landlord_id'],
-            'tenant_id' => $validated['tenant_id'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
-            'status' => 'pending',
-            'validated_by_support' => 'no',
-            'support_validation_date' => null,
-            'accepted_by_tenant' => 'no',
-            'tenant_acceptance_date' => null,
-            'document_path' => json_encode([]), // Evita null
-        ]);
-
-        // Guardar los términos adicionales en document_path como JSON
+        // Preparar términos del contrato
         $contractTerms = [
             'monthly_price' => $validated['monthly_price'],
             'deposit' => $validated['deposit'],
@@ -415,8 +387,18 @@ class RentalRequestController extends Controller
             'special_conditions' => $validated['special_conditions'] ?? '',
         ];
 
-        $contract->update([
-            'document_path' => json_encode($contractTerms)
+        // Crear el contrato
+        $contract = Contract::create([
+            'property_id' => $validated['property_id'],
+            'landlord_id' => $validated['landlord_id'],
+            'tenant_id' => $validated['tenant_id'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'deposit' => $validated['deposit'],
+            'status' => 'pending',
+            'document_path' => $contractTerms, // El mutator lo convierte a JSON
+            'validated_by_support' => 'no',
+            'accepted_by_tenant' => 'no',
         ]);
 
         // Actualizar estado de la solicitud
@@ -437,7 +419,7 @@ class RentalRequestController extends Controller
 
         return response()->json([
             'message' => 'Contrato enviado exitosamente',
-            'data' => $contract
+            'data' => $contract->load(['property', 'tenant', 'landlord'])
         ], 201);
     }
 
