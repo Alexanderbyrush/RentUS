@@ -2,22 +2,31 @@
 
 namespace Database\Factories;
 
-use App\Models\Report;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ReportFactory extends Factory
 {
-    protected $model = Report::class;
-
-    public function definition(): array
+    public function definition()
     {
         return [
-            'type' => $this->faker->randomElement(['financiero', 'mantenimiento', 'ocupación', 'general']),
-            'applied_filter' => $this->faker->word(),
-            'generation_date' => $this->faker->date('Y-m-d'),
-            'user_id' => User::factory(),
+            'type' => fake()->randomElement([
+                'financial',
+                'activity',
+                'properties',
+                'payments',
+                'contracts',
+                'maintenance'
+            ]),
+            'applied_filter' => fake()->randomElement([
+                'last_30_days',
+                'current_year',
+                'pending_only',
+                'completed_only',
+                'high_value_contracts',
+                'active_properties'
+            ]),
+            'generation_date' => now()->format('Y-m-d'),
+            'user_id' => null,
         ];
     }
 }
-

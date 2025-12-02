@@ -18,11 +18,11 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             PropertySeeder::class,
             ContractSeeder::class,
-            MaintenanceSeeder::class,
             PaymentSeeder::class,
             RatingSeeder::class,
-            RentalRequestSeeder::class,
+            MaintenanceSeeder::class,
             ReportSeeder::class,
+            RentalRequestSeeder::class,
         ]);
     }
 }

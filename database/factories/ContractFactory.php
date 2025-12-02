@@ -11,20 +11,53 @@ class ContractFactory extends Factory
 {
     protected $model = Contract::class;
 
-    public function definition(): array
+    public function definition()
     {
+        // Seleccionar una propiedad existente
+        $property = Property::inRandomOrder()->first();
+
+        if (! $property) {
+            throw new \Exception("No hay propiedades para crear contratos.");
+        }
+
+        $landlord = User::find($property->user_id);
+
+        if (! $landlord) {
+            throw new \Exception("La propiedad {$property->id} no tiene un propietario válido.");
+        }
+
+        // Inquilino distinto al dueño
+        $tenant = User::where('id', '!=', $landlord->id)->inRandomOrder()->first();
+
+        if (! $tenant) {
+            throw new \Exception("No se puede generar contrato porque solo existe un usuario en la base.");
+        }
+
+        // Fechas realistas
+        $start = now()->subDays(rand(0, 30))->startOfDay();
+        $end   = $start->copy()->addMonths(rand(3, 12))->endOfDay();
+
+        // Estado lógico
+        $status = now()->greaterThan($end) ? 'expired' : 'active';
+
         return [
-            'start_date' => $this->faker->date('Y-m-d'),
-            'end_date' => $this->faker->date('Y-m-d', '+1 year'),
-            'status' => $this->faker->randomElement(['activo', 'finalizado', 'pendiente']),
-            'document_path' => $this->faker->filePath(),
-            'validated_by_support' => $this->faker->randomElement(['si', 'no']),
-            'support_validation_date' => $this->faker->date('Y-m-d'),
-            'accepted_by_tenant' => $this->faker->randomElement(['si', 'no']),
-            'tenant_acceptance_date' => $this->faker->date('Y-m-d'),
-            'property_id' => Property::factory(),
-            'landlord_id' => User::factory(),
-            'tenant_id' => User::factory(),
+            'start_date' => $start,
+            'end_date' => $end,
+            'status' => $status,
+
+            'document_path' => "contracts/contrato_{$property->id}.pdf",
+            'deposit' => rand(500000, 3000000),
+
+            // Validación de soporte e inquilino realista
+            'validated_by_support' => 'yes',
+            'support_validation_date' => now()->subDays(rand(0, 5)),
+
+            'accepted_by_tenant' => 'yes',
+            'tenant_acceptance_date' => now()->subDays(rand(0, 3)),
+
+            'property_id' => $property->id,
+            'landlord_id' => $landlord->id,
+            'tenant_id' => $tenant->id,
         ];
     }
 }

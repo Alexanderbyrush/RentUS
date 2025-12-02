@@ -61,6 +61,19 @@ class Contract extends Model
         $this->attributes['document_path'] = is_array($value) ? json_encode($value) : $value;
     }
 
-    public function rentalRequest(){return $this->hasOne(RentalRequest::class);}
+    public function rentalRequest()
+    {
+        return $this->hasOne(RentalRequest::class);
+    }
 
+
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
 }

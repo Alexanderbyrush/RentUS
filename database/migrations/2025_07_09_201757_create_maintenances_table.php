@@ -14,22 +14,25 @@ return new class extends Migration
         Schema::create('maintenances', function (Blueprint $table) {
             $table->id();
             $table->string('description');
-            $table->string('request_date');
-            $table->string('status');
-            $table->string('resolution_date');
-            $table->string('validated_by_tenant');
-             $table->unsignedBigInteger('property_id')->unique();
-            $table->unsignedBigInteger('user_id')->unique();
+            $table->date('request_date');
+            $table->enum('status', ['pending', 'in_progress', 'finished'])->default('pending');
+            $table->date('resolution_date')->nullable();
+            $table->enum('validated_by_tenant', ['yes', 'no'])->default('no');
+
+            $table->unsignedBigInteger('property_id');
+            $table->unsignedBigInteger('user_id');
+
             $table->foreign('property_id')
-            ->references('id')
-            ->on('properties')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
+                ->references('id')->on('properties')
+                ->onDelete('cascade')->onUpdate('cascade');
+
             $table->foreign('user_id')
-            ->references('id')
-            ->on('users')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
+                ->references('id')->on('users')
+                ->onDelete('cascade')->onUpdate('cascade');
+
+            // un usuario no puede crear dos mantenimientos activos en la misma propiedad
+            $table->unique(['property_id', 'user_id', 'status'], 'maintenance_unique_active');
+
             $table->timestamps();
         });
     }

@@ -2,38 +2,87 @@
 
 namespace Database\Factories;
 
-use App\Models\Property;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use App\Models\User;
 
 class PropertyFactory extends Factory
 {
-    protected $model = Property::class;
-
-    public function definition(): array
+    public function definition()
     {
+        $cities = [
+            "Bogotá", "Medellín", "Cali", "Barranquilla", "Bucaramanga",
+            "Cartagena", "Manizales", "Pereira", "Santa Marta"
+        ];
+
+        $city = fake()->randomElement($cities);
+
+        $coords = [
+            "Bogotá" => ["lat" => 4.7110, "lng" => -74.0721],
+            "Medellín" => ["lat" => 6.2442, "lng" => -75.5812],
+            "Cali" => ["lat" => 3.4516, "lng" => -76.5320],
+            "Barranquilla" => ["lat" => 10.9878, "lng" => -74.7889],
+            "Bucaramanga" => ["lat" => 7.1193, "lng" => -73.1227],
+            "Cartagena" => ["lat" => 10.3910, "lng" => -75.4794],
+            "Manizales" => ["lat" => 5.0703, "lng" => -75.5138],
+            "Pereira" => ["lat" => 4.8133, "lng" => -75.6961],
+            "Santa Marta" => ["lat" => 11.2408, "lng" => -74.1990],
+        ];
+
+        $base = $coords[$city];
+
+        // Variación realista de 20–250 metros (6 decimales)
+        $lat = $base["lat"] + fake()->randomFloat(6, -0.0025, 0.0025);
+        $lng = $base["lng"] + fake()->randomFloat(6, -0.0025, 0.0025);
+
         return [
-            'title' => $this->faker->sentence(4),
-            'description' => $this->faker->paragraph(3),
-            'address' => $this->faker->streetAddress,
-            'city' => $this->faker->city,
-            'status' => $this->faker->randomElement(['disponible', 'ocupado', 'en mantenimiento']),
-            // ✅ Ajustado para no exceder decimal(8,2)
-            'monthly_price' => $this->faker->randomFloat(2, 500000, 999999),
-            'area_m2' => $this->faker->numberBetween(40, 250),
-            'num_bedrooms' => $this->faker->numberBetween(1, 5),
-            'num_bathrooms' => $this->faker->numberBetween(1, 4),
-            'included_services' => $this->faker->randomElement([
-                'agua, luz',
-                'agua, luz, internet',
-                'todos los servicios',
-                'ninguno'
-            ]),
-            'publication_date' => $this->faker->date(),
-            'image_url' => $this->faker->imageUrl(640, 480, 'house', true, 'house'),
-            'lat' => $this->faker->latitude(),
-            'lng' => $this->faker->longitude(),
-            'user_id' => User::factory(),
+            "title"             => fake()->randomElement([
+                                    "Apartamento moderno en zona exclusiva",
+                                    "Casa amplia y familiar",
+                                    "Estudio amueblado cerca al centro",
+                                    "Apartamento con vista panorámica",
+                                    "Casa campestre con jardín",
+                                    "Loft minimalista",
+                                    "Apartamento cerca de universidades",
+                                    "Casa con excelente iluminación natural"
+                                ]),
+            "description"       => fake()->randomElement([
+                                    "Propiedad en excelente estado, ideal para familias o parejas jóvenes.",
+                                    "Ubicación estratégica cerca de transporte público y centros comerciales.",
+                                    "Espacios modernos con acabados de primera calidad.",
+                                    "Seguridad 24 horas y zonas verdes comunitarias."
+                                ]),
+            "address"           => "Calle " . rand(1, 150) . " #" . rand(1, 120) . "-" . rand(1, 80),
+            "city"              => $city,
+            "status"            => "available",
+            "monthly_price"     => fake()->numberBetween(
+                                    $city === "Bogotá" || $city === "Medellín" ? 1200000 : 900000,
+                                    $city === "Cartagena" ? 4500000 : 3200000
+                                ),
+            "area_m2"           => rand(40, 180),
+            "num_bedrooms"      => rand(1, 4),
+            "num_bathrooms"     => rand(1, 3),
+            "included_services" => fake()->randomElement([
+                                    "Agua, Luz, Internet",
+                                    "Agua, Gas",
+                                    "Agua, Luz",
+                                    "Agua, Luz, Gas, Administración incluida"
+                                ]),
+            "publication_date"  => now()->subDays(rand(1, 60))->toDateString(),
+            "image_url"         => fake()->randomElement([
+                "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+                "https://images.unsplash.com/photo-1580587771525-78b9dba3b914",
+                "https://images.unsplash.com/photo-1560185127-6ed84b937f65",
+                "https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd3",
+                "https://images.unsplash.com/photo-1507089947368-19c1da9775ae"
+            ]) . "?auto=format&w=800",
+
+            "lat"               => $lat,
+            "lng"               => $lng,
+
+            // Accuracy (metros estimados de precisión GPS de teléfono)
+            "accuracy"          => fake()->randomFloat(2, 3.00, 18.00), // 3–18 m, muy realista
+
+            "user_id"           => User::inRandomOrder()->first()?->id ?? User::factory()->create()->id,
         ];
     }
 }

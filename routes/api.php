@@ -20,14 +20,13 @@ Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
 });
 
-// RUTAS PÚBLICAS (solo lectura)
-Route::get('users', [UserController::class, 'index']);
+// PÚBLICAS
 Route::get('properties', [PropertyController::class, 'index']);
-// Primero ruta específica
 Route::get('properties/count', [PropertyController::class, 'count']);
-
-Route::get('properties', [PropertyController::class, 'index']);
 Route::get('properties/{property}', [PropertyController::class, 'show']);
+Route::get('users', [UserController::class, 'index']);
+Route::get('users/{id}', [UserController::class, 'show']);
+
 
 Route::get('contracts', [ContractController::class, 'index']);
 Route::get('payments', [PaymentController::class, 'index']);
@@ -48,20 +47,17 @@ Route::middleware('auth:api')->group(function () {
 
     // Users (CRUD)
     Route::prefix('users')->group(function () {
-        Route::get('/', [UserController::class, 'index']);
         Route::post('/', [UserController::class, 'store']);
-        Route::get('{id}', [UserController::class, 'show']);
         Route::put('{id}', [UserController::class, 'update']);
         Route::delete('{id}', [UserController::class, 'destroy']);
     });
 
     Route::prefix('properties')->group(function () {
-        Route::get('/', [PropertyController::class, 'index']);
         Route::post('/', [PropertyController::class, 'store']);
-        Route::get('{property}', [PropertyController::class, 'show']);
         Route::put('{property}', [PropertyController::class, 'update']);
         Route::delete('{property}', [PropertyController::class, 'destroy']);
-        Route::post('{property}/point', [PropertyController::class, 'savePoint']);
+        Route::post('{property}/point', [PropertyController::class,'update']);
+
     });
 
     // Payments (CRUD)

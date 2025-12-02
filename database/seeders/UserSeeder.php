@@ -9,21 +9,16 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Usuario de ejemplo fijo
-        User::create([
-            'name' => 'Usuario Ejemplo',
-            'phone' => '3000000000',
-            'email' => 'usuario@example.com',
-            'password_hash' => 'hash_generico_123',
-            'address' => 'Calle Falsa 123',
-            'id_documento' => '1234567890',
-            'status' => 'active',
-            'email_verified_at' => now(),
-            'password' => 'usuario@example.com',
-            'remember_token' => 'token12345',
-        ]);
+    // 10 usuarios en total
+    User::factory()->count(10)->create();
 
-        // Usuarios aleatorios
-        User::factory(10)->create();
+    // Usuario fijo para pruebas
+    User::factory()->create([
+        "name" => "Administrador Rentus",
+        "email" => "admin@rentus.com",
+        "password" => bcrypt("password"),
+        "password_hash" => bcrypt("admin@rentus.com"),
+        "status" => "active",
+    ]);
     }
 }

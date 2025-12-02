@@ -13,22 +13,29 @@ return new class extends Migration
     {
         Schema::create('ratings', function (Blueprint $table) {
             $table->id();
-            $table->string('recipient_role');
-            $table->string('score');
-            $table->string('comment');
-            $table->string('date');
-            $table->unsignedBigInteger('contract_id')->unique();
-            $table->unsignedBigInteger('user_id')->unique();
+            $table->enum('recipient_role', ['landlord', 'tenant']); // si aplica
+            $table->tinyInteger('score'); // 1 a 5, por ejemplo
+            $table->text('comment')->nullable();
+            $table->date('date');
+
+            $table->unsignedBigInteger('contract_id');
+            $table->unsignedBigInteger('user_id');
+
+            // Un usuario solo puede calificar una vez un mismo contrato
+            $table->unique(['contract_id', 'user_id']);
+
             $table->foreign('contract_id')
-            ->references('id')
-            ->on('contracts')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
+                ->references('id')
+                ->on('contracts')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+
             $table->foreign('user_id')
-            ->references('id')
-            ->on('users')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+
             $table->timestamps();
         });
     }

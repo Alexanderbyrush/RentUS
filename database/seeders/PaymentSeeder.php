@@ -2,17 +2,27 @@
 
 namespace Database\Seeders;
 
-use App\Models\Payment;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Contract;
+use App\Models\Payment;
 
 class PaymentSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        Payment::factory()->count(20)->create();
+        $contracts = Contract::doesntHave('payments')->get();
+
+        if ($contracts->count() === 0) {
+            $this->command->error("No existen contratos elegibles para pagos.");
+            return;
+        }
+
+        foreach ($contracts as $contract) {
+            Payment::factory()->create([
+                'contract_id' => $contract->id,
+            ]);
+        }
+
+        $this->command->info("Pagos generados correctamente para contratos existentes.");
     }
 }

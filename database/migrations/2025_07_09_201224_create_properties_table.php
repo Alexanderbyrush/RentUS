@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('address');
             $table->string('city');
             $table->string('status');
-            $table->decimal('monthly_price');
+            $table->decimal('monthly_price', 12, 2); // hasta 9,999,999,999.99
             $table->integer('area_m2');
             $table->string('num_bedrooms');
             $table->string('num_bathrooms');
@@ -27,12 +27,13 @@ return new class extends Migration
             $table->text('image_url');
             $table->string('lat');
             $table->string('lng');
+            $table->decimal('accuracy', 10, 2)->nullable();
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')
-            ->references('id')
-            ->on('users')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
             $table->timestamps();
         });
     }
