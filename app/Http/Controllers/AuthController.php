@@ -23,12 +23,6 @@ class AuthController extends Controller
             'password' => [
                 'required',
                 'string',
-                'confirmed',
-                Password::min(8)
-                    ->letters()
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols()
             ],
             'address' => 'required|string|max:255|min:5',
             'id_documento' => 'required|string|max:50|unique:users,id_documento',
@@ -43,7 +37,6 @@ class AuthController extends Controller
             'email.email' => 'Debe ingresar un correo válido',
             'email.unique' => 'Este correo ya está registrado',
             'password.required' => 'La contraseña es obligatoria',
-            'password.confirmed' => 'Las contraseñas no coinciden',
             'address.required' => 'La dirección es obligatoria',
             'address.min' => 'La dirección debe tener al menos 5 caracteres',
             'id_documento.required' => 'El documento de identidad es obligatorio',
