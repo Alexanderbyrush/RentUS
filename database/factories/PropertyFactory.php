@@ -81,6 +81,7 @@ class PropertyFactory extends Factory
 
             // Accuracy (metros estimados de precisión GPS de teléfono)
             "accuracy"          => fake()->randomFloat(2, 3.00, 18.00), // 3–18 m, muy realista
+            "views" => fake()->numberBetween(0, 300),
 
             "user_id"           => User::inRandomOrder()->first()?->id ?? User::factory()->create()->id,
         ];

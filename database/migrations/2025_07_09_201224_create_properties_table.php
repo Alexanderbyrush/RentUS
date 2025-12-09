@@ -28,6 +28,7 @@ return new class extends Migration
             $table->string('lat');
             $table->string('lng');
             $table->decimal('accuracy', 10, 2)->nullable();
+            $table->unsignedBigInteger('views')->default(0);
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')
                 ->references('id')

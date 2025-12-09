@@ -24,6 +24,7 @@ Route::prefix('auth')->group(function () {
 Route::get('properties', [PropertyController::class, 'index']);
 Route::get('properties/count', [PropertyController::class, 'count']);
 Route::get('properties/{property}', [PropertyController::class, 'show']);
+Route::post('/properties/{property}/view', [PropertyController::class, 'incrementViews']);
 Route::get('users', [UserController::class, 'index']);
 Route::get('users/{id}', [UserController::class, 'show']);
 
