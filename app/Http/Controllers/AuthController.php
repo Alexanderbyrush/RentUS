@@ -84,7 +84,76 @@ class AuthController extends Controller
             ], 500);
         }
     }
+    /**
+     * Cambiar contraseña del usuario autenticado
+     */
+    public function updatePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed', // Requiere new_password_confirmation
+            ],
+        ], [
+            'current_password.required' => 'La contraseña actual es obligatoria',
+            'new_password.required' => 'La nueva contraseña es obligatoria',
+            'new_password.min' => 'La nueva contraseña debe tener al menos 8 caracteres',
+            'new_password.confirmed' => 'Las contraseñas no coinciden',
+        ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado'
+                ], 404);
+            }
+
+            // Verificar contraseña actual
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La contraseña actual es incorrecta'
+                ], 401);
+            }
+
+            // Verificar que la nueva contraseña sea diferente
+            if (Hash::check($request->new_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La nueva contraseña debe ser diferente a la actual'
+                ], 422);
+            }
+
+            // Actualizar contraseña
+            $user->password = Hash::make($request->new_password);
+            $user->password_hash = Hash::make($request->new_password);
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Contraseña actualizada exitosamente'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la contraseña',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     /**
      * Login de usuario con soporte para "Recordarme"
      */
@@ -162,7 +231,6 @@ class AuthController extends Controller
                 'expires_in' => $ttl * 60, // en segundos
                 'remember' => $remember
             ], 200);
-
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
             return response()->json([
                 'success' => false,
