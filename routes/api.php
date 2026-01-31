@@ -11,16 +11,27 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\ReportController;
-use App\Models\User;
-use App\Models\Property;
 
+// ============================================
 // RUTAS DE AUTENTICACIÓN PÚBLICAS
+// ============================================
 Route::prefix('auth')->group(function () {
+    // Registro y verificación
     Route::post('register', [AuthController::class, 'register']);
+    Route::post('verify-email', [AuthController::class, 'verifyEmail']);
+    Route::post('resend-code', [AuthController::class, 'resendVerificationCode']);
+
+    // Login
     Route::post('login', [AuthController::class, 'login']);
+
+    // Recuperación de contraseña
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('reset-password', [AuthController::class, 'resetPassword']);
 });
 
-// PÚBLICAS
+// ============================================
+// RUTAS PÚBLICAS (sin autenticación)
+// ============================================
 Route::get('properties', [PropertyController::class, 'index']);
 Route::get('properties/count', [PropertyController::class, 'count']);
 Route::get('properties/{property}', [PropertyController::class, 'show']);
@@ -28,18 +39,20 @@ Route::post('/properties/{property}/view', [PropertyController::class, 'incremen
 Route::get('users', [UserController::class, 'index']);
 Route::get('users/{id}', [UserController::class, 'show']);
 
-
 Route::get('contracts', [ContractController::class, 'index']);
 Route::get('payments', [PaymentController::class, 'index']);
 Route::get('ratings', [RatingController::class, 'index']);
 Route::get('maintenances', [MaintenanceController::class, 'index']);
 Route::get('reports', [ReportController::class, 'index']);
 
-// RUTAS PROTEGIDAS (requieren login)
-// RUTAS PROTEGIDAS
+// ============================================
+// RUTAS PROTEGIDAS (requieren autenticación)
+// ============================================
 Route::middleware('auth:api')->group(function () {
 
-    // Auth
+    // ============================================
+    // AUTH - Gestión de sesión y perfil
+    // ============================================
     Route::prefix('auth')->group(function () {
         Route::get('me', [AuthController::class, 'me']);
         Route::post('logout', [AuthController::class, 'logout']);
@@ -47,22 +60,28 @@ Route::middleware('auth:api')->group(function () {
         Route::put('password', [AuthController::class, 'updatePassword']);
     });
 
-    // Users (CRUD)
+    // ============================================
+    // USERS - CRUD de usuarios
+    // ============================================
     Route::prefix('users')->group(function () {
         Route::post('/', [UserController::class, 'store']);
         Route::put('{id}', [UserController::class, 'update']);
         Route::delete('{id}', [UserController::class, 'destroy']);
     });
 
+    // ============================================
+    // PROPERTIES - Gestión de propiedades
+    // ============================================
     Route::prefix('properties')->group(function () {
         Route::post('/', [PropertyController::class, 'store']);
         Route::put('{property}', [PropertyController::class, 'update']);
         Route::delete('{property}', [PropertyController::class, 'destroy']);
         Route::post('{property}/point', [PropertyController::class,'update']);
-
     });
 
-    // Payments (CRUD)
+    // ============================================
+    // PAYMENTS - Gestión de pagos
+    // ============================================
     Route::prefix('payments')->group(function () {
         Route::get('/', [PaymentController::class, 'index']);
         Route::post('/', [PaymentController::class, 'store']);
@@ -71,7 +90,9 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{id}', [PaymentController::class, 'destroy']);
     });
 
-    // Ratings (CRUD)
+    // ============================================
+    // RATINGS - Calificaciones
+    // ============================================
     Route::prefix('ratings')->group(function () {
         Route::get('/', [RatingController::class, 'index']);
         Route::post('/', [RatingController::class, 'store']);
@@ -80,7 +101,9 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{id}', [RatingController::class, 'destroy']);
     });
 
-    // Maintenances (CRUD)
+    // ============================================
+    // MAINTENANCES - Mantenimientos
+    // ============================================
     Route::prefix('maintenances')->group(function () {
         Route::get('/', [MaintenanceController::class, 'index']);
         Route::post('/', [MaintenanceController::class, 'store']);
@@ -89,7 +112,9 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{id}', [MaintenanceController::class, 'destroy']);
     });
 
-    // Reports (CRUD si aplica)
+    // ============================================
+    // REPORTS - Reportes
+    // ============================================
     Route::prefix('reports')->group(function () {
         Route::get('/', [ReportController::class, 'index']);
         Route::post('/', [ReportController::class, 'store']);
@@ -98,32 +123,43 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('{id}', [ReportController::class, 'destroy']);
     });
 
-    Route::post('/rental-requests', [RentalRequestController::class, 'create']); // Crear solicitud
-    Route::get('/rental-requests/my-requests', [RentalRequestController::class, 'getMyRequests']); // Mis solicitudes
-    Route::put('/rental-requests/{id}/accept-counter', [RentalRequestController::class, 'acceptCounterProposal']); // Aceptar contra-propuesta
-    Route::put('/rental-requests/{id}/reject-counter', [RentalRequestController::class, 'rejectCounterProposal']); // Rechazar contra-propuesta
+    // ============================================
+    // RENTAL REQUESTS - Solicitudes de alquiler
+    // ============================================
 
-    // DUEÑO
-    Route::get('/rental-requests/owner', [RentalRequestController::class, 'getOwnerRequests']); // Solicitudes recibidas
-    Route::put('/rental-requests/{id}/accept', [RentalRequestController::class, 'acceptRequest']); // Aceptar solicitud
-    Route::put('/rental-requests/{id}/reject', [RentalRequestController::class, 'rejectRequest']); // Rechazar solicitud
-    Route::put('/rental-requests/{id}/counter-propose', [RentalRequestController::class, 'counterPropose']); // Proponer otra fecha
-    Route::get('/rental-requests/{id}/visit-status', [RentalRequestController::class, 'checkVisitStatus']); // Verificar si puede continuar
-    Route::post('/rental-requests/send-contract', [RentalRequestController::class, 'sendContractTerms']); // Enviar términos del contrato
+    // Inquilino
+    Route::post('/rental-requests', [RentalRequestController::class, 'create']);
+    Route::get('/rental-requests/my-requests', [RentalRequestController::class, 'getMyRequests']);
+    Route::put('/rental-requests/{id}/accept-counter', [RentalRequestController::class, 'acceptCounterProposal']);
+    Route::put('/rental-requests/{id}/reject-counter', [RentalRequestController::class, 'rejectCounterProposal']);
 
-    // GENERAL
-    Route::get('/rental-requests/{id}', [RentalRequestController::class, 'getDetails']); // Detalles
-    Route::delete('/rental-requests/{id}', [RentalRequestController::class, 'cancel']); // Cancelar
+    // Dueño
+    Route::get('/rental-requests/owner', [RentalRequestController::class, 'getOwnerRequests']);
+    Route::put('/rental-requests/{id}/accept', [RentalRequestController::class, 'acceptRequest']);
+    Route::put('/rental-requests/{id}/reject', [RentalRequestController::class, 'rejectRequest']);
+    Route::put('/rental-requests/{id}/counter-propose', [RentalRequestController::class, 'counterPropose']);
+    Route::get('/rental-requests/{id}/visit-status', [RentalRequestController::class, 'checkVisitStatus']);
+    Route::post('/rental-requests/send-contract', [RentalRequestController::class, 'sendContractTerms']);
 
-    Route::get('/notifications', [NotificationController::class, 'index']); // Todas
-    Route::get('/notifications/unread', [NotificationController::class, 'unread']); // No leídas
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']); // Contador
-    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']); // Marcar como leída
-    Route::put('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']); // Marcar todas
-    Route::delete('/notifications/{id}', [NotificationController::class, 'delete']); // Eliminar
+    // General
+    Route::get('/rental-requests/{id}', [RentalRequestController::class, 'getDetails']);
+    Route::delete('/rental-requests/{id}', [RentalRequestController::class, 'cancel']);
 
-    Route::get('/contracts', [ContractController::class, 'index']); // Todos mis contratos
-    Route::get('/contracts/stats', [ContractController::class, 'stats']); // Estadísticas
-    Route::put('/contracts/{id}/accept', [ContractController::class, 'acceptContract']); // Inquilino acepta contrato
+    // ============================================
+    // NOTIFICATIONS - Notificaciones
+    // ============================================
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::put('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'delete']);
+
+    // ============================================
+    // CONTRACTS - Contratos
+    // ============================================
+    Route::get('/contracts', [ContractController::class, 'index']);
+    Route::get('/contracts/stats', [ContractController::class, 'stats']);
+    Route::put('/contracts/{id}/accept', [ContractController::class, 'acceptContract']);
     Route::put('/contracts/{id}/reject', [ContractController::class, 'rejectContract']);
 });
