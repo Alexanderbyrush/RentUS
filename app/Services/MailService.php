@@ -16,8 +16,7 @@ class MailService
     {
         try {
             $verificationLink = config('app.frontend_url')
-                . '/confirm-email?token=' . $verificationCode->token
-                . '&code=' . $verificationCode->code;
+                . '/confirm-email?token=' . $verificationCode->token;
 
             $subject = 'Confirma tu cuenta - ' . config('app.name');
 
@@ -83,8 +82,7 @@ class MailService
     {
         try {
             $verificationLink = config('app.frontend_url')
-                . '/confirm-email?token=' . $verificationCode->token
-                . '&code=' . $verificationCode->code;
+                . '/confirm-email?token=' . $verificationCode->token;
 
             $subject = 'Nuevo código de verificación - ' . config('app.name');
 

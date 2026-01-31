@@ -39,11 +39,6 @@ Route::post('/properties/{property}/view', [PropertyController::class, 'incremen
 Route::get('users', [UserController::class, 'index']);
 Route::get('users/{id}', [UserController::class, 'show']);
 
-Route::get('contracts', [ContractController::class, 'index']);
-Route::get('payments', [PaymentController::class, 'index']);
-Route::get('ratings', [RatingController::class, 'index']);
-Route::get('maintenances', [MaintenanceController::class, 'index']);
-Route::get('reports', [ReportController::class, 'index']);
 
 // ============================================
 // RUTAS PROTEGIDAS (requieren autenticación)
@@ -77,6 +72,16 @@ Route::middleware('auth:api')->group(function () {
         Route::put('{property}', [PropertyController::class, 'update']);
         Route::delete('{property}', [PropertyController::class, 'destroy']);
         Route::post('{property}/point', [PropertyController::class,'update']);
+    });
+
+    // ============================================
+    // CONTRACTS - Contratos (CORREGIDO)
+    // ============================================
+    Route::prefix('contracts')->group(function () {
+        Route::get('/', [ContractController::class, 'index']);
+        Route::get('stats', [ContractController::class, 'stats']);
+        Route::put('{id}/accept', [ContractController::class, 'accept']); // ✅ CORREGIDO
+        Route::put('{id}/reject', [ContractController::class, 'reject']); // ✅ CORREGIDO
     });
 
     // ============================================
@@ -154,12 +159,4 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::put('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
     Route::delete('/notifications/{id}', [NotificationController::class, 'delete']);
-
-    // ============================================
-    // CONTRACTS - Contratos
-    // ============================================
-    Route::get('/contracts', [ContractController::class, 'index']);
-    Route::get('/contracts/stats', [ContractController::class, 'stats']);
-    Route::put('/contracts/{id}/accept', [ContractController::class, 'acceptContract']);
-    Route::put('/contracts/{id}/reject', [ContractController::class, 'rejectContract']);
 });
