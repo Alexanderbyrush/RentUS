@@ -3,47 +3,66 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends Factory<\App\Models\User>
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $password;
-
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
-        return [
-            'name' => $this->faker->name(),
-            'phone' => $this->faker->numerify('3#########'), // Número celular genérico
-            'email' => $this->faker->unique()->safeEmail(),
-            'password_hash' => Str::random(60), // Cadena aleatoria
-            'address' => $this->faker->address(),
-            'id_documento' => $this->faker->numerify('#########'), // Documento genérico
-            'status' => $this->faker->randomElement(['active', 'inactive']),
-            'email_verified_at' => now(),
-            'password' => Str::random(10), // Solo texto genérico
-            'remember_token' => Str::random(10),
+        // Listas realistas
+        $names = [
+            "Juan Pérez", "María Rodríguez", "Carlos Gómez", "Ana Torres",
+            "Luis Martínez", "Sofía Ramírez", "Andrés Herrera", "Laura Fernández",
+            "Jorge Castro", "Valentina Sánchez", "Mateo Morales", "Camila Vargas"
         ];
-    }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
-    public function unverified(): static
-    {
-        return $this->state(fn(array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        $departments = [
+            "Antioquia", "Cundinamarca", "Valle del Cauca", "Atlántico",
+            "Santander", "Bolívar", "Risaralda", "Caldas"
+        ];
+
+        $citiesByDepartment = [
+            "Antioquia" => ["Medellín", "Envigado", "Itagüí", "Bello"],
+            "Cundinamarca" => ["Bogotá", "Soacha", "Chía", "Zipaquirá"],
+            "Valle del Cauca" => ["Cali", "Palmira", "Buenaventura"],
+            "Atlántico" => ["Barranquilla", "Soledad", "Malambo"],
+            "Santander" => ["Bucaramanga", "Floridablanca", "Girón"],
+            "Bolívar" => ["Cartagena", "Magangué"],
+            "Risaralda" => ["Pereira", "Dosquebradas"],
+            "Caldas" => ["Manizales", "Villamaría"]
+        ];
+
+        $statuses = ["active", "inactive", "pending_verification"];
+
+        $name = $names[array_rand($names)];
+        $department = $departments[array_rand($departments)];
+        $city = $citiesByDepartment[$department][array_rand($citiesByDepartment[$department])];
+
+        return [
+            "name" => $name,
+            "phone" => "+57" . rand(3000000000, 3999999999),
+            "email" => strtolower(str_replace(" ", ".", $name)) . rand(1, 200) . "@gmail.com",
+
+            // Dos campos de contraseña porque la migración tiene ambos
+            "password" => Hash::make("12345678"),
+            "password_hash" => Hash::make("12345678"),
+
+            "address" => "Calle " . rand(1, 120) . " #" . rand(1, 90) . "-" . rand(1, 60) . ", " . $city,
+            "id_documento" => strval(rand(1000000000, 1999999999)),
+            "status" => $statuses[array_rand($statuses)],
+
+            "email_verified_at" => now(),
+
+            "photo" => null, // se puede reemplazar por una imagen base64 si lo deseas
+            "bio" => "Persona responsable, con buenos antecedentes de arriendo.",
+            "department" => $department,
+            "city" => $city,
+
+            "remember_token" => Str::random(10),
+        ];
     }
 }

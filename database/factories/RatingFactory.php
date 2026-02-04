@@ -2,25 +2,25 @@
 
 namespace Database\Factories;
 
-use App\Models\Rating;
-use App\Models\Contract;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class RatingFactory extends Factory
 {
-    protected $model = Rating::class;
-
-    public function definition(): array
+    public function definition()
     {
         return [
-            'recipient_role' => $this->faker->randomElement(['arrendatario', 'propietario', 'soporte']),
-            'score' => $this->faker->numberBetween(1, 5),
-            'comment' => $this->faker->sentence(10),
-            'date' => $this->faker->date('Y-m-d'),
-            'contract_id' => Contract::factory(),
-            'user_id' => User::factory(),
+            'recipient_role' => null, // lo asignaremos en el seeder según si califica dueño o inquilino
+            'score' => fake()->numberBetween(3, 5),
+            'comment' => fake()->randomElement([
+                'Excelente comunicación y cumplimiento del contrato.',
+                'Todo muy claro durante la estadía.',
+                'Pagos puntuales y conducta impecable.',
+                'El trato fue respetuoso y responsable.',
+                'Seriedad total durante toda la relación contractual.',
+            ]),
+            'date' => now()->format('Y-m-d'),
+            'contract_id' => null, // lo define el seeder
+            'user_id' => null, // lo define el seeder
         ];
     }
 }
-

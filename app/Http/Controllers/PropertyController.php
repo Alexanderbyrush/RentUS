@@ -155,4 +155,17 @@ class PropertyController extends Controller
             'count' => Property::count()
         ]);
     }
+
+    public function incrementViews($id)
+    {
+        $property = Property::findOrFail($id);
+
+        // Incrementar visitas
+        $property->increment('views');
+
+        return response()->json([
+            'message' => 'Visita registrada',
+            'views' => $property->views
+        ]);
+    }
 }

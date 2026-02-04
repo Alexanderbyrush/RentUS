@@ -11,17 +11,35 @@ class MaintenanceFactory extends Factory
 {
     protected $model = Maintenance::class;
 
-    public function definition(): array
+    public function definition()
     {
+        // Seleccionar una propiedad existente aleatoriamente
+        $property = Property::inRandomOrder()->first();
+
+        if (! $property) {
+            throw new \Exception("No hay propiedades para crear mantenimientos.");
+        }
+
+        // Usuario (inquilino) aleatorio de la BD
+        $user = User::inRandomOrder()->first();
+
+        if (! $user) {
+            throw new \Exception("No hay usuarios registrados para crear mantenimientos.");
+        }
+
+        // Fechas realistas
+        $requestDate = now()->subDays(rand(0, 120))->format('Y-m-d');
+        $statusOptions = ['pending', 'in_progress', 'finished'];
+        $status = $statusOptions[array_rand($statusOptions)];
+
         return [
-            'description' => $this->faker->sentence(12),
-            'request_date' => $this->faker->date('Y-m-d'),
-            'status' => $this->faker->randomElement(['pendiente', 'en proceso', 'completado']),
-            'resolution_date' => $this->faker->date('Y-m-d'),
-            'validated_by_tenant' => $this->faker->randomElement(['si', 'no']),
-            'property_id' => Property::factory(),
-            'user_id' => User::factory(),
+            'description' => $this->faker->sentence(8), // texto genérico, pero válido
+            'request_date' => $requestDate,
+            'status' => $status,
+            'resolution_date' => $status === 'finished' ? now()->subDays(rand(1, 20)) : null,
+            'validated_by_tenant' => $status === 'finished' ? 'yes' : 'no',
+            'property_id' => $property->id,
+            'user_id' => $user->id,
         ];
     }
 }
-
