@@ -69,7 +69,7 @@ class AuthController extends Controller
         DB::beginTransaction();
 
         try {
-            // Crear usuario con estado pendiente
+            // Crear usuario con estado pendiente y rol por defecto 'user'
             $user = User::create([
                 'name' => $request->name,
                 'email' => strtolower(trim($request->email)),
@@ -80,6 +80,7 @@ class AuthController extends Controller
                 'id_documento' => $request->id_documento,
                 'status' => 'inactive', // Usuario inactivo hasta verificar correo
                 'verification_status' => 'pending',
+                'role' => 'user', // ← ROL POR DEFECTO
             ]);
 
             // Generar código de verificación
@@ -88,7 +89,7 @@ class AuthController extends Controller
                 'email_verification'
             );
 
-            // Enviar correo de verificación
+            // Enviar correo de verificación (SOLO CÓDIGO)
             $emailSent = $this->mailService->sendConfirmationEmail($user, $verificationCode);
 
             if (!$emailSent) {
@@ -110,8 +111,11 @@ class AuthController extends Controller
                         'name' => $user->name,
                         'email' => $user->email,
                         'verification_status' => $user->verification_status,
+                        'role' => $user->role,
                     ],
                     'verification_required' => true,
+                    'verification_token' => $verificationCode->token, // ← ENVIAR EL TOKEN
+                    'email' => $user->email
                 ]
             ], 201);
         } catch (\Exception $e) {
@@ -133,7 +137,6 @@ class AuthController extends Controller
     /**
      * Verificar código de correo electrónico
      */
-    // AuthController.php
     public function verifyEmail(Request $request)
     {
         $request->validate([
@@ -157,9 +160,8 @@ class AuthController extends Controller
 
         $user->email_verified_at = now();
         $user->status = 'active';
-        $user->verification_status = 'verified'; // <--- Esto faltaba
+        $user->verification_status = 'verified';
         $user->save();
-
 
         // Marcar código como usado
         $verification->used = true;
@@ -179,6 +181,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'status' => $user->status,
                 'verification_status' => $user->verification_status,
+                'role' => $user->role, // ← INCLUIR ROL
             ]
         ]);
     }
@@ -197,7 +200,6 @@ class AuthController extends Controller
 
         return response()->json(['success' => true]);
     }
-
 
     /**
      * Reenviar código de verificación
@@ -345,6 +347,14 @@ class AuthController extends Controller
                 ], 403);
             }
 
+            // Verificar credenciales
+            if (!JWTAuth::attempt($credentials)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contraseña incorrecta'
+                ], 401);
+            }
+
             // Configurar TTL del token según "Recordarme"
             $remember = $request->input('remember', false);
             $token = $this->tokenService->generateToken($user, $remember);
@@ -352,16 +362,8 @@ class AuthController extends Controller
             if (!$token) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Contraseña incorrecta'
-                ], 401);
-            }
-
-            // Verificar credenciales
-            if (!JWTAuth::attempt($credentials)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Contraseña incorrecta'
-                ], 401);
+                    'message' => 'Error al generar token'
+                ], 500);
             }
 
             return response()->json([
@@ -375,6 +377,7 @@ class AuthController extends Controller
                     'status' => $user->status,
                     'photo' => $user->photo,
                     'verification_status' => $user->verification_status,
+                    'role' => $user->role, // ← INCLUIR ROL
                 ],
                 'token' => $token,
                 'token_type' => 'bearer',
@@ -675,6 +678,7 @@ class AuthController extends Controller
                     'bio' => $user->bio,
                     'department' => $user->department,
                     'city' => $user->city,
+                    'role' => $user->role, // ← INCLUIR ROL
                     'created_at' => $user->created_at,
                     'email_verified_at' => $user->email_verified_at,
                 ]

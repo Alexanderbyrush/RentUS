@@ -19,6 +19,8 @@ class UserSeeder extends Seeder
         "password" => bcrypt("password"),
         "password_hash" => bcrypt("admin@rentus.com"),
         "status" => "active",
+        "role" => "admin",
+        "verification_status" => "verified"
     ]);
     }
 }
