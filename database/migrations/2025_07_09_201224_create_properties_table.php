@@ -18,6 +18,17 @@ return new class extends Migration
             $table->string('address');
             $table->string('city');
             $table->string('status');
+
+            // Estado de aprobación por el admin
+            $table->enum('approval_status', ['pending', 'approved', 'rejected'])
+                  ->default('pending')
+                  ->comment('Estado de aprobación: pending (pendiente), approved (aprobada), rejected (rechazada)');
+
+            // Visibilidad de la publicación
+            $table->enum('visibility', ['published', 'hidden'])
+                  ->default('published')
+                  ->comment('Visibilidad: published (publicada), hidden (oculta)');
+
             $table->decimal('monthly_price', 12, 2); // hasta 9,999,999,999.99
             $table->integer('area_m2');
             $table->string('num_bedrooms');
@@ -30,12 +41,19 @@ return new class extends Migration
             $table->decimal('accuracy', 10, 2)->nullable();
             $table->unsignedBigInteger('views')->default(0);
             $table->unsignedBigInteger('user_id');
+
             $table->foreign('user_id')
-                ->references('id')
-                ->on('users')
-                ->onDelete('cascade')
-                ->onUpdate('cascade');
+                  ->references('id')
+                  ->on('users')
+                  ->onDelete('cascade')
+                  ->onUpdate('cascade');
+
             $table->timestamps();
+
+            // Índices para mejorar rendimiento de consultas
+            $table->index('approval_status');
+            $table->index('visibility');
+            $table->index(['approval_status', 'visibility']); // Índice compuesto
         });
     }
 
