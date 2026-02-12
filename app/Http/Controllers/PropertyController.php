@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Property;
+use App\Models\PropertyImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class PropertyController extends Controller
 {
@@ -84,8 +86,13 @@ class PropertyController extends Controller
             $query->orderBy('created_at', 'desc');
         }
 
-        // 🔗 INCLUIR RELACIONES (eager loading)
-        $query->with('user:id,name,email,phone,photo');
+        // 🔗 INCLUIR RELACIONES (eager loading) - AGREGADAS LAS IMÁGENES
+        $query->with([
+            'user:id,name,email,phone,photo',
+            'images' => function ($q) {
+                $q->orderBy('order');
+            }
+        ]);
 
         // 📄 PAGINACIÓN
         $properties = $query->paginate($perPage);
@@ -118,7 +125,12 @@ class PropertyController extends Controller
      */
     public function show(Property $property)
     {
-        $property->load('user:id,name,email,phone,photo');
+        $property->load([
+            'user:id,name,email,phone,photo',
+            'images' => function ($q) {
+                $q->orderBy('order');
+            }
+        ]);
 
         return response()->json([
             'success' => true,
@@ -127,70 +139,195 @@ class PropertyController extends Controller
     }
 
     /**
-     * Crear nueva propiedad
+     * Crear nueva propiedad con múltiples imágenes
+     */
+    /**
+     * Crear nueva propiedad con múltiples imágenes
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title'             => 'required|string|max:255',
-            'description'       => 'required|string',
-            'address'           => 'required|string',
-            'city'              => 'nullable|string|max:120',
-            'status'            => 'nullable|string|in:available,rented,maintenance',
-            'monthly_price'     => 'required|numeric|min:0',
-            'area_m2'           => 'nullable|numeric|min:0',
-            'num_bedrooms'      => 'nullable|integer|min:0',
-            'num_bathrooms'     => 'nullable|integer|min:0',
-            'included_services' => 'nullable|string', // Recibir como string JSON
-            'image'             => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'image_url'         => 'nullable|string',
-            'lat'               => 'nullable|numeric', // ⭐ Ahora nullable
-            'lng'               => 'nullable|numeric', // ⭐ Ahora nullable
-            'accuracy'          => 'nullable|numeric',
-            'user_id'           => 'nullable|integer|exists:users,id', // Campo para asignar usuario
-            // ⭐ NO validamos publication_date porque lo asignamos automáticamente
-        ]);
+        try {
+            $validated = $request->validate([
+                'title'             => 'required|string|max:255',
+                'description'       => 'required|string',
+                'address'           => 'required|string',
+                'city'              => 'nullable|string|max:120',
+                'status'            => 'nullable|string|in:available,rented,maintenance',
+                'monthly_price'     => 'required|numeric|min:0',
+                'area_m2'           => 'nullable|numeric|min:0',
+                'num_bedrooms'      => 'nullable|integer|min:0',
+                'num_bathrooms'     => 'nullable|integer|min:0',
+                'included_services' => 'nullable|string',
+                'lat'               => 'nullable|numeric',
+                'lng'               => 'nullable|numeric',
+                'accuracy'          => 'nullable|numeric',
+                'user_id'           => 'nullable|integer|exists:users,id',
+                'images'            => 'nullable|string',
+                'publication_date'  => 'nullable|date',
+            ]);
 
-        // Parsear included_services si viene como string JSON
-        if (isset($validated['included_services']) && is_string($validated['included_services'])) {
-            $validated['included_services'] = json_decode($validated['included_services'], true) ?? [];
-        }
+            DB::beginTransaction();
 
-        // Manejar subida de imagen si existe
-        if ($request->hasFile('image')) {
-            try {
-                $image = $request->file('image');
-                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-                $path = $image->storeAs('properties', $filename, 'public');
-                $validated['image_url'] = asset('storage/' . $path);
-            } catch (\Exception $e) {
-                Log::error('Error uploading image: ' . $e->getMessage());
+            // 🔥 PROCESAR included_services - DEBE SER STRING JSON
+            if (isset($validated['included_services'])) {
+                // Si ya es un string JSON, dejarlo como está
+                if (is_string($validated['included_services'])) {
+                    // Validar que sea JSON válido
+                    $decoded = json_decode($validated['included_services'], true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        $validated['included_services'] = '[]';
+                    }
+                }
+            } else {
+                $validated['included_services'] = '[]';
             }
+
+            // Asignar user_id
+            if (!isset($validated['user_id'])) {
+                $validated['user_id'] = auth()->id();
+            }
+
+            // Asignar publication_date si no existe
+            if (!isset($validated['publication_date']) || empty($validated['publication_date'])) {
+                $validated['publication_date'] = now()->format('Y-m-d');
+            }
+
+            // Si es admin/support, aprobar automáticamente
+            $user = auth()->user();
+            if ($user && in_array($user->role, ['admin', 'support'])) {
+                $validated['approval_status'] = 'approved';
+                $validated['visibility'] = 'published';
+            }
+
+            // 🔥 Extraer imágenes antes de crear propiedad
+            $imagesData = $validated['images'] ?? null;
+            unset($validated['images']);
+
+            // Inicializar image_url como null
+            $validated['image_url'] = null;
+
+            Log::info('📝 Datos validados para crear propiedad:', [
+                'title' => $validated['title'],
+                'user_id' => $validated['user_id'],
+                'included_services' => $validated['included_services'],
+                'tiene_imagenes' => !empty($imagesData)
+            ]);
+
+            // Crear la propiedad
+            $property = Property::create($validated);
+
+            Log::info('✅ Propiedad creada con ID: ' . $property->id);
+
+            // 🔥 PROCESAR MÚLTIPLES IMÁGENES BASE64
+            if ($imagesData) {
+                $imagesArray = json_decode($imagesData, true);
+
+                if (is_array($imagesArray) && count($imagesArray) > 0) {
+                    Log::info('📸 Procesando ' . count($imagesArray) . ' imágenes');
+
+                    foreach ($imagesArray as $index => $base64Image) {
+                        try {
+                            // Decodificar base64
+                            if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
+                                $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
+                                $type = strtolower($type[1]);
+
+                                // Validar tipo de imagen
+                                if (!in_array($type, ['jpg', 'jpeg', 'png', 'webp'])) {
+                                    Log::warning("⚠️ Tipo de imagen no válido: {$type}");
+                                    continue;
+                                }
+
+                                $imageData = base64_decode($base64Image);
+
+                                if ($imageData === false) {
+                                    Log::warning("⚠️ Error decodificando base64 para imagen {$index}");
+                                    continue;
+                                }
+
+                                // Validar tamaño (10MB máximo)
+                                $sizeInMB = strlen($imageData) / (1024 * 1024);
+                                if ($sizeInMB > 10) {
+                                    Log::warning("⚠️ Imagen {$index} excede 10MB: {$sizeInMB}MB");
+                                    continue;
+                                }
+
+                                // Generar nombre único
+                                $filename = 'property_' . $property->id . '_' . time() . '_' . $index . '.' . $type;
+                                $path = 'properties/' . $filename;
+
+                                // Guardar imagen en storage/public
+                                Storage::disk('public')->put($path, $imageData);
+                                $imageUrl = asset('storage/' . $path);
+
+                                Log::info("✅ Imagen {$index} guardada: {$filename}");
+
+                                // Crear registro en property_images
+                                PropertyImage::create([
+                                    'property_id' => $property->id,
+                                    'image_url' => $imageUrl,
+                                    'order' => $index,
+                                    'is_main' => $index === 0
+                                ]);
+
+                                // Si es la primera imagen, actualizar image_url en properties
+                                if ($index === 0) {
+                                    $property->update(['image_url' => $imageUrl]);
+                                    Log::info("✅ image_url principal actualizado");
+                                }
+                            } else {
+                                Log::warning("⚠️ Formato base64 inválido para imagen {$index}");
+                            }
+                        } catch (\Exception $e) {
+                            Log::error("❌ Error procesando imagen {$index}: " . $e->getMessage());
+                            Log::error($e->getTraceAsString());
+                        }
+                    }
+                } else {
+                    Log::warning('⚠️ El campo images no contiene un array válido');
+                }
+            } else {
+                Log::info('ℹ️ No se proporcionaron imágenes');
+            }
+
+            DB::commit();
+
+            // Cargar relaciones
+            $property->load([
+                'user:id,name,email,phone,photo',
+                'images' => function ($q) {
+                    $q->orderBy('order');
+                }
+            ]);
+
+            Log::info('🎉 Propiedad creada exitosamente con ' . $property->images->count() . ' imágenes');
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Propiedad creada exitosamente',
+                'property' => $property
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            Log::error('❌ Error de validación:', $e->errors());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ Error creando propiedad: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear la propiedad',
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
         }
-
-        // ⭐ Asignar user_id: primero el proporcionado, luego el autenticado
-        if (!isset($validated['user_id'])) {
-            $validated['user_id'] = auth()->id();
-        }
-
-        // ⭐ SIEMPRE establecer publication_date con la fecha actual
-        $validated['publication_date'] = now()->format('Y-m-d');
-
-        // Si es admin/support creando, aprobar automáticamente
-        $user = auth()->user();
-        if (in_array($user->role, ['admin', 'support'])) {
-            $validated['approval_status'] = 'approved';
-            $validated['visibility'] = 'published';
-        }
-
-        $property = Property::create($validated);
-        $property->load('user:id,name,email,phone,photo');
-
-        return response()->json([
-            'success'  => true,
-            'message'  => 'Propiedad creada exitosamente',
-            'property' => $property
-        ], 201);
     }
 
     /**
@@ -198,7 +335,7 @@ class PropertyController extends Controller
      */
     public function update(Request $request, Property $property)
     {
-        // 🔒 VALIDACIÓN DE PERMISO → Solo el dueño o admin/support pueden editar
+        // 🔒 VALIDACIÓN DE PERMISO
         $user = auth()->user();
         $isOwner = $property->user_id === $user->id;
         $isAdmin = in_array($user->role, ['admin', 'support']);
@@ -220,44 +357,111 @@ class PropertyController extends Controller
             'area_m2'           => 'sometimes|numeric|min:0',
             'num_bedrooms'      => 'sometimes|integer|min:0',
             'num_bathrooms'     => 'sometimes|integer|min:0',
-            'included_services' => 'sometimes|string', // Recibir como string JSON
-            'image_url'         => 'sometimes|string|nullable',
-            'image'             => 'sometimes|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'included_services' => 'sometimes|string',
             'lat'               => 'sometimes|numeric',
             'lng'               => 'sometimes|numeric',
+            'images'            => 'sometimes|string', // Nuevas imágenes en base64
+            'delete_images'     => 'sometimes|array', // IDs de imágenes a eliminar
+            'delete_images.*'   => 'integer|exists:property_images,id'
         ]);
 
-        // Parsear included_services si viene como string JSON
-        if (isset($validated['included_services']) && is_string($validated['included_services'])) {
-            $validated['included_services'] = json_decode($validated['included_services'], true) ?? [];
-        }
+        try {
+            DB::beginTransaction();
 
-        // Manejar subida de imagen si existe
-        if ($request->hasFile('image')) {
-            try {
-                // Eliminar imagen anterior si existe
-                if ($property->image_url) {
-                    $oldPath = str_replace(asset('storage/'), '', $property->image_url);
-                    Storage::disk('public')->delete($oldPath);
-                }
-
-                $image = $request->file('image');
-                $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-                $path = $image->storeAs('properties', $filename, 'public');
-                $validated['image_url'] = asset('storage/' . $path);
-            } catch (\Exception $e) {
-                Log::error('Error uploading image: ' . $e->getMessage());
+            // Parsear included_services
+            if (isset($validated['included_services']) && is_string($validated['included_services'])) {
+                $validated['included_services'] = json_decode($validated['included_services'], true) ?? [];
             }
+
+            // Eliminar imágenes marcadas
+            if (isset($validated['delete_images'])) {
+                $imagesToDelete = PropertyImage::whereIn('id', $validated['delete_images'])
+                    ->where('property_id', $property->id)
+                    ->get();
+
+                foreach ($imagesToDelete as $image) {
+                    // Eliminar archivo físico
+                    $path = str_replace(asset('storage/'), '', $image->image_url);
+                    Storage::disk('public')->delete($path);
+
+                    // Eliminar registro
+                    $image->delete();
+                }
+            }
+
+            // Procesar nuevas imágenes
+            if (isset($validated['images'])) {
+                $imagesArray = json_decode($validated['images'], true);
+
+                if (is_array($imagesArray) && count($imagesArray) > 0) {
+                    $currentMaxOrder = PropertyImage::where('property_id', $property->id)->max('order') ?? -1;
+
+                    foreach ($imagesArray as $index => $base64Image) {
+                        try {
+                            if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
+                                $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
+                                $type = strtolower($type[1]);
+
+                                if (!in_array($type, ['jpg', 'jpeg', 'png', 'webp'])) {
+                                    continue;
+                                }
+
+                                $base64Image = base64_decode($base64Image);
+
+                                if ($base64Image === false) {
+                                    continue;
+                                }
+
+                                $filename = time() . '_' . $index . '_' . uniqid() . '.' . $type;
+                                $path = 'properties/' . $filename;
+
+                                Storage::disk('public')->put($path, $base64Image);
+
+                                PropertyImage::create([
+                                    'property_id' => $property->id,
+                                    'image_url' => asset('storage/' . $path),
+                                    'order' => $currentMaxOrder + $index + 1,
+                                    'is_main' => false
+                                ]);
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Error procesando imagen ' . $index . ': ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+
+            // Remover campos no actualizables
+            unset($validated['images'], $validated['delete_images']);
+
+            // Actualizar propiedad
+            $property->update($validated);
+
+            DB::commit();
+
+            // Cargar relaciones
+            $property->load([
+                'user:id,name,email,phone,photo',
+                'images' => function ($q) {
+                    $q->orderBy('order');
+                }
+            ]);
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Propiedad actualizada correctamente',
+                'property' => $property
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error actualizando propiedad: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la propiedad',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $property->update($validated);
-        $property->load('user:id,name,email,phone,photo');
-
-        return response()->json([
-            'success'  => true,
-            'message'  => 'Propiedad actualizada correctamente',
-            'property' => $property
-        ]);
     }
 
     /**
@@ -265,7 +469,7 @@ class PropertyController extends Controller
      */
     public function destroy(Property $property)
     {
-        // 🔒 VALIDACIÓN DE PERMISO → Solo el dueño o admin/support pueden eliminar
+        // 🔒 VALIDACIÓN DE PERMISO
         $user = auth()->user();
         $isOwner = $property->user_id === $user->id;
         $isAdmin = in_array($user->role, ['admin', 'support']);
@@ -277,22 +481,45 @@ class PropertyController extends Controller
             ], 403);
         }
 
-        // Eliminar imagen si existe
-        if ($property->image_url) {
-            try {
-                $path = str_replace(asset('storage/'), '', $property->image_url);
+        try {
+            DB::beginTransaction();
+
+            // Eliminar todas las imágenes asociadas
+            $images = PropertyImage::where('property_id', $property->id)->get();
+
+            foreach ($images as $image) {
+                $path = str_replace(asset('storage/'), '', $image->image_url);
                 Storage::disk('public')->delete($path);
-            } catch (\Exception $e) {
-                Log::error('Error deleting image: ' . $e->getMessage());
+                $image->delete();
             }
+
+            // Eliminar imagen principal si existe (compatibilidad)
+            if ($property->image_url) {
+                try {
+                    $path = str_replace(asset('storage/'), '', $property->image_url);
+                    Storage::disk('public')->delete($path);
+                } catch (\Exception $e) {
+                    Log::error('Error deleting main image: ' . $e->getMessage());
+                }
+            }
+
+            $property->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Propiedad eliminada correctamente'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error eliminando propiedad: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la propiedad'
+            ], 500);
         }
-
-        $property->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Propiedad eliminada correctamente'
-        ]);
     }
 
     /**

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('lng')->nullable()->change();
 
             $table->longText('image_url')->nullable()->change();
-            
+
         });
     }
 

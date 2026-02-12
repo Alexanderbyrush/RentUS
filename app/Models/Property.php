@@ -31,7 +31,8 @@ class Property extends Model
         'user_id',
         'views',
         'lat',
-        'lng'
+        'lng',
+        'accuracy' // 🔥 AGREGAR accuracy
     ];
 
     // Cast para JSON
@@ -42,6 +43,7 @@ class Property extends Model
         'area_m2'           => 'decimal:2',
         'lat'               => 'decimal:7',
         'lng'               => 'decimal:7',
+        'accuracy'          => 'decimal:2', // 🔥 AGREGAR cast para accuracy
         'views'             => 'integer',
     ];
 
@@ -60,6 +62,20 @@ class Property extends Model
         return $this->belongsTo(User::class);
     }
 
+    // 🔥 NUEVA RELACIÓN: Múltiples imágenes
+    public function images()
+    {
+        return $this->hasMany(PropertyImage::class)->orderBy('order');
+    }
+
+    // 🔥 NUEVA RELACIÓN: Imagen principal
+    public function mainImage()
+    {
+        return $this->hasOne(PropertyImage::class)
+                    ->where('is_main', true)
+                    ->orderBy('order');
+    }
+
     public function maintenances()
     {
         return $this->hasMany(Maintenance::class);
@@ -76,7 +92,6 @@ class Property extends Model
     }
 
     // ==================== SCOPES PARA FILTROS ====================
-    // Estos scopes son necesarios para que HasSmartScopes funcione correctamente
 
     /**
      * Scope: Búsqueda por texto en múltiples campos
@@ -172,7 +187,12 @@ class Property extends Model
      */
     public function scopeIncluded(Builder $query): Builder
     {
-        return $query->with('user:id,name,email,phone,photo');
+        return $query->with([
+            'user:id,name,email,phone,photo',
+            'images' => function($q) {
+                $q->orderBy('order');
+            }
+        ]);
     }
 
     // ==================== MÉTODOS AUXILIARES ====================
