@@ -6,22 +6,19 @@ use App\Models\Property;
 use App\Models\PropertyImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
 class PropertyController extends Controller
 {
     /**
-     * Listado con filtros, paginación y ordenamiento
+     * Listado con filtros y paginación
      */
     public function index(Request $request)
     {
         $perPage = $request->input('per_page', 10);
-
-        // Construir query con filtros
         $query = Property::query();
 
-        // 🔍 FILTRO DE BÚSQUEDA (search)
+        // Filtros
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -32,52 +29,33 @@ class PropertyController extends Controller
             });
         }
 
-        // 🏷️ FILTRO POR ESTADO DE DISPONIBILIDAD (status)
-        if ($request->has('status') && !empty($request->status)) {
+        if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        // ✅ FILTRO POR ESTADO DE APROBACIÓN (approval_status)
-        if ($request->has('approval_status') && !empty($request->approval_status)) {
+        if ($request->has('approval_status')) {
             $query->where('approval_status', $request->approval_status);
         }
 
-        // 👁️ FILTRO POR VISIBILIDAD (visibility)
-        if ($request->has('visibility') && !empty($request->visibility)) {
-            $query->where('visibility', $request->visibility);
-        }
-
-        // 🌍 FILTRO POR CIUDAD (city)
-        if ($request->has('city') && !empty($request->city)) {
+        if ($request->has('city')) {
             $query->where('city', 'like', "%{$request->city}%");
         }
 
-        // 💰 FILTRO POR PRECIO MÍNIMO (min_price)
-        if ($request->has('min_price') && !empty($request->min_price)) {
+        if ($request->has('min_price')) {
             $query->where('monthly_price', '>=', $request->min_price);
         }
 
-        // 💰 FILTRO POR PRECIO MÁXIMO (max_price)
-        if ($request->has('max_price') && !empty($request->max_price)) {
+        if ($request->has('max_price')) {
             $query->where('monthly_price', '<=', $request->max_price);
         }
 
-        // 📊 ORDENAMIENTO (sort_by y sort_order)
+        // Ordenamiento
         $sortBy = $request->input('sort_by', 'created_at');
         $sortOrder = $request->input('sort_order', 'desc');
 
-        // Validar campos permitidos para ordenar
         $allowedSortFields = [
-            'id',
-            'title',
-            'city',
-            'monthly_price',
-            'area_m2',
-            'views',
-            'created_at',
-            'updated_at',
-            'status',
-            'approval_status',
+            'id', 'title', 'city', 'monthly_price', 'area_m2',
+            'views', 'created_at', 'updated_at', 'status', 'approval_status'
         ];
 
         if (in_array($sortBy, $allowedSortFields)) {
@@ -86,7 +64,7 @@ class PropertyController extends Controller
             $query->orderBy('created_at', 'desc');
         }
 
-        // 🔗 INCLUIR RELACIONES (eager loading) - AGREGADAS LAS IMÁGENES
+        // Eager loading con imágenes
         $query->with([
             'user:id,name,email,phone,photo',
             'images' => function ($q) {
@@ -94,20 +72,7 @@ class PropertyController extends Controller
             }
         ]);
 
-        // 📄 PAGINACIÓN
         $properties = $query->paginate($perPage);
-
-        // 📋 LOG PARA DEBUG
-        Log::info('🔍 Filtros aplicados en propiedades:', [
-            'search' => $request->search,
-            'status' => $request->status,
-            'approval_status' => $request->approval_status,
-            'visibility' => $request->visibility,
-            'city' => $request->city,
-            'sort_by' => $sortBy,
-            'sort_order' => $sortOrder,
-            'resultados' => $properties->total(),
-        ]);
 
         return response()->json([
             'data' => $properties->items(),
@@ -139,10 +104,7 @@ class PropertyController extends Controller
     }
 
     /**
-     * Crear nueva propiedad con múltiples imágenes
-     */
-    /**
-     * Crear nueva propiedad con múltiples imágenes
+     * 🔥 CREAR PROPIEDAD CON IMÁGENES BASE64
      */
     public function store(Request $request)
     {
@@ -162,17 +124,15 @@ class PropertyController extends Controller
                 'lng'               => 'nullable|numeric',
                 'accuracy'          => 'nullable|numeric',
                 'user_id'           => 'nullable|integer|exists:users,id',
-                'images'            => 'nullable|string',
+                'images'            => 'nullable|string', // JSON array de base64
                 'publication_date'  => 'nullable|date',
             ]);
 
             DB::beginTransaction();
 
-            // 🔥 PROCESAR included_services - DEBE SER STRING JSON
+            // Procesar included_services
             if (isset($validated['included_services'])) {
-                // Si ya es un string JSON, dejarlo como está
                 if (is_string($validated['included_services'])) {
-                    // Validar que sea JSON válido
                     $decoded = json_decode($validated['included_services'], true);
                     if (json_last_error() !== JSON_ERROR_NONE) {
                         $validated['included_services'] = '[]';
@@ -187,38 +147,35 @@ class PropertyController extends Controller
                 $validated['user_id'] = auth()->id();
             }
 
-            // Asignar publication_date si no existe
+            // Asignar publication_date
             if (!isset($validated['publication_date']) || empty($validated['publication_date'])) {
                 $validated['publication_date'] = now()->format('Y-m-d');
             }
 
-            // Si es admin/support, aprobar automáticamente
+            // Auto-aprobar si es admin/support
             $user = auth()->user();
             if ($user && in_array($user->role, ['admin', 'support'])) {
                 $validated['approval_status'] = 'approved';
                 $validated['visibility'] = 'published';
             }
 
-            // 🔥 Extraer imágenes antes de crear propiedad
+            // Extraer imágenes antes de crear propiedad
             $imagesData = $validated['images'] ?? null;
             unset($validated['images']);
-
-            // Inicializar image_url como null
             $validated['image_url'] = null;
 
-            Log::info('📝 Datos validados para crear propiedad:', [
+            Log::info('📝 Creando propiedad:', [
                 'title' => $validated['title'],
                 'user_id' => $validated['user_id'],
-                'included_services' => $validated['included_services'],
                 'tiene_imagenes' => !empty($imagesData)
             ]);
 
-            // Crear la propiedad
+            // Crear propiedad
             $property = Property::create($validated);
 
             Log::info('✅ Propiedad creada con ID: ' . $property->id);
 
-            // 🔥 PROCESAR MÚLTIPLES IMÁGENES BASE64
+            // 🔥 PROCESAR IMÁGENES BASE64
             if ($imagesData) {
                 $imagesArray = json_decode($imagesData, true);
 
@@ -227,60 +184,37 @@ class PropertyController extends Controller
 
                     foreach ($imagesArray as $index => $base64Image) {
                         try {
-                            // Decodificar base64
-                            if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
-                                $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
-                                $type = strtolower($type[1]);
+                            // Validar formato Data URI
+                            if (!str_starts_with($base64Image, 'data:image/')) {
+                                Log::warning("⚠️ Imagen {$index} no es Data URI válido");
+                                continue;
+                            }
 
-                                // Validar tipo de imagen
-                                if (!in_array($type, ['jpg', 'jpeg', 'png', 'webp'])) {
-                                    Log::warning("⚠️ Tipo de imagen no válido: {$type}");
-                                    continue;
-                                }
+                            // Validar tamaño aproximado (Base64 es ~33% más grande)
+                            // 2MB original = ~2.7MB base64
+                            $estimatedSize = (strlen($base64Image) * 0.75) / (1024 * 1024);
+                            if ($estimatedSize > 3) {
+                                Log::warning("⚠️ Imagen {$index} muy grande: {$estimatedSize}MB");
+                                continue;
+                            }
 
-                                $imageData = base64_decode($base64Image);
+                            // Crear registro en property_images
+                            PropertyImage::create([
+                                'property_id' => $property->id,
+                                'image_url' => $base64Image,
+                                'order' => $index,
+                                'is_main' => $index === 0
+                            ]);
 
-                                if ($imageData === false) {
-                                    Log::warning("⚠️ Error decodificando base64 para imagen {$index}");
-                                    continue;
-                                }
+                            Log::info("✅ Imagen {$index} guardada");
 
-                                // Validar tamaño (10MB máximo)
-                                $sizeInMB = strlen($imageData) / (1024 * 1024);
-                                if ($sizeInMB > 10) {
-                                    Log::warning("⚠️ Imagen {$index} excede 10MB: {$sizeInMB}MB");
-                                    continue;
-                                }
-
-                                // Generar nombre único
-                                $filename = 'property_' . $property->id . '_' . time() . '_' . $index . '.' . $type;
-                                $path = 'properties/' . $filename;
-
-                                // Guardar imagen en storage/public
-                                Storage::disk('public')->put($path, $imageData);
-                                $imageUrl = asset('storage/' . $path);
-
-                                Log::info("✅ Imagen {$index} guardada: {$filename}");
-
-                                // Crear registro en property_images
-                                PropertyImage::create([
-                                    'property_id' => $property->id,
-                                    'image_url' => $imageUrl,
-                                    'order' => $index,
-                                    'is_main' => $index === 0
-                                ]);
-
-                                // Si es la primera imagen, actualizar image_url en properties
-                                if ($index === 0) {
-                                    $property->update(['image_url' => $imageUrl]);
-                                    Log::info("✅ image_url principal actualizado");
-                                }
-                            } else {
-                                Log::warning("⚠️ Formato base64 inválido para imagen {$index}");
+                            // Si es la primera imagen, actualizar image_url principal
+                            if ($index === 0) {
+                                $property->update(['image_url' => $base64Image]);
+                                Log::info("✅ image_url principal actualizado");
                             }
                         } catch (\Exception $e) {
                             Log::error("❌ Error procesando imagen {$index}: " . $e->getMessage());
-                            Log::error($e->getTraceAsString());
                         }
                     }
                 } else {
@@ -300,13 +234,14 @@ class PropertyController extends Controller
                 }
             ]);
 
-            Log::info('🎉 Propiedad creada exitosamente con ' . $property->images->count() . ' imágenes');
+            Log::info('🎉 Propiedad creada con ' . $property->images->count() . ' imágenes');
 
             return response()->json([
                 'success'  => true,
                 'message'  => 'Propiedad creada exitosamente',
                 'property' => $property
             ], 201);
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             Log::error('❌ Error de validación:', $e->errors());
@@ -316,6 +251,7 @@ class PropertyController extends Controller
                 'message' => 'Error de validación',
                 'errors' => $e->errors()
             ], 422);
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('❌ Error creando propiedad: ' . $e->getMessage());
@@ -331,11 +267,11 @@ class PropertyController extends Controller
     }
 
     /**
-     * Actualizar propiedad
+     * 🔥 ACTUALIZAR PROPIEDAD CON IMÁGENES BASE64
      */
     public function update(Request $request, Property $property)
     {
-        // 🔒 VALIDACIÓN DE PERMISO
+        // Validación de permiso
         $user = auth()->user();
         $isOwner = $property->user_id === $user->id;
         $isAdmin = in_array($user->role, ['admin', 'support']);
@@ -360,9 +296,10 @@ class PropertyController extends Controller
             'included_services' => 'sometimes|string',
             'lat'               => 'sometimes|numeric',
             'lng'               => 'sometimes|numeric',
-            'images'            => 'sometimes|string', // Nuevas imágenes en base64
-            'delete_images'     => 'sometimes|array', // IDs de imágenes a eliminar
-            'delete_images.*'   => 'integer|exists:property_images,id'
+            'images'            => 'sometimes|string', // Nuevas imágenes base64
+            'delete_images'     => 'sometimes|array', // IDs a eliminar
+            'delete_images.*'   => 'integer|exists:property_images,id',
+            'reorder_images'    => 'sometimes|array', // Reordenar existentes
         ]);
 
         try {
@@ -370,56 +307,40 @@ class PropertyController extends Controller
 
             // Parsear included_services
             if (isset($validated['included_services']) && is_string($validated['included_services'])) {
-                $validated['included_services'] = json_decode($validated['included_services'], true) ?? [];
+                $decoded = json_decode($validated['included_services'], true);
+                $validated['included_services'] = is_array($decoded) ? json_encode($decoded) : '[]';
             }
 
             // Eliminar imágenes marcadas
             if (isset($validated['delete_images'])) {
-                $imagesToDelete = PropertyImage::whereIn('id', $validated['delete_images'])
+                PropertyImage::whereIn('id', $validated['delete_images'])
                     ->where('property_id', $property->id)
-                    ->get();
+                    ->delete();
+            }
 
-                foreach ($imagesToDelete as $image) {
-                    // Eliminar archivo físico
-                    $path = str_replace(asset('storage/'), '', $image->image_url);
-                    Storage::disk('public')->delete($path);
-
-                    // Eliminar registro
-                    $image->delete();
+            // Reordenar imágenes existentes
+            if (isset($validated['reorder_images'])) {
+                foreach ($validated['reorder_images'] as $imageId => $newOrder) {
+                    PropertyImage::where('id', $imageId)
+                        ->where('property_id', $property->id)
+                        ->update(['order' => $newOrder]);
                 }
             }
 
-            // Procesar nuevas imágenes
+            // Agregar nuevas imágenes
             if (isset($validated['images'])) {
                 $imagesArray = json_decode($validated['images'], true);
 
                 if (is_array($imagesArray) && count($imagesArray) > 0) {
-                    $currentMaxOrder = PropertyImage::where('property_id', $property->id)->max('order') ?? -1;
+                    $currentMaxOrder = PropertyImage::where('property_id', $property->id)
+                        ->max('order') ?? -1;
 
                     foreach ($imagesArray as $index => $base64Image) {
                         try {
-                            if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
-                                $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
-                                $type = strtolower($type[1]);
-
-                                if (!in_array($type, ['jpg', 'jpeg', 'png', 'webp'])) {
-                                    continue;
-                                }
-
-                                $base64Image = base64_decode($base64Image);
-
-                                if ($base64Image === false) {
-                                    continue;
-                                }
-
-                                $filename = time() . '_' . $index . '_' . uniqid() . '.' . $type;
-                                $path = 'properties/' . $filename;
-
-                                Storage::disk('public')->put($path, $base64Image);
-
+                            if (str_starts_with($base64Image, 'data:image/')) {
                                 PropertyImage::create([
                                     'property_id' => $property->id,
-                                    'image_url' => asset('storage/' . $path),
+                                    'image_url' => $base64Image,
                                     'order' => $currentMaxOrder + $index + 1,
                                     'is_main' => false
                                 ]);
@@ -431,8 +352,17 @@ class PropertyController extends Controller
                 }
             }
 
+            // Actualizar image_url principal con la primera imagen
+            $firstImage = PropertyImage::where('property_id', $property->id)
+                ->orderBy('order')
+                ->first();
+
+            if ($firstImage) {
+                $validated['image_url'] = $firstImage->image_url;
+            }
+
             // Remover campos no actualizables
-            unset($validated['images'], $validated['delete_images']);
+            unset($validated['images'], $validated['delete_images'], $validated['reorder_images']);
 
             // Actualizar propiedad
             $property->update($validated);
@@ -452,6 +382,7 @@ class PropertyController extends Controller
                 'message'  => 'Propiedad actualizada correctamente',
                 'property' => $property
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error actualizando propiedad: ' . $e->getMessage());
@@ -465,11 +396,10 @@ class PropertyController extends Controller
     }
 
     /**
-     * Eliminar propiedad
+     * Eliminar propiedad (CASCADE automático elimina imágenes)
      */
     public function destroy(Property $property)
     {
-        // 🔒 VALIDACIÓN DE PERMISO
         $user = auth()->user();
         $isOwner = $property->user_id === $user->id;
         $isAdmin = in_array($user->role, ['admin', 'support']);
@@ -484,33 +414,19 @@ class PropertyController extends Controller
         try {
             DB::beginTransaction();
 
-            // Eliminar todas las imágenes asociadas
-            $images = PropertyImage::where('property_id', $property->id)->get();
-
-            foreach ($images as $image) {
-                $path = str_replace(asset('storage/'), '', $image->image_url);
-                Storage::disk('public')->delete($path);
-                $image->delete();
-            }
-
-            // Eliminar imagen principal si existe (compatibilidad)
-            if ($property->image_url) {
-                try {
-                    $path = str_replace(asset('storage/'), '', $property->image_url);
-                    Storage::disk('public')->delete($path);
-                } catch (\Exception $e) {
-                    Log::error('Error deleting main image: ' . $e->getMessage());
-                }
-            }
-
+            // Las imágenes se eliminan automáticamente por CASCADE
+            $imageCount = $property->images()->count();
             $property->delete();
 
             DB::commit();
+
+            Log::info("🗑️ Propiedad {$property->id} eliminada con {$imageCount} imágenes");
 
             return response()->json([
                 'success' => true,
                 'message' => 'Propiedad eliminada correctamente'
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error eliminando propiedad: ' . $e->getMessage());
@@ -523,18 +439,18 @@ class PropertyController extends Controller
     }
 
     /**
-     * Guardar punto geográfico de la propiedad
+     * Guardar/actualizar ubicación
      */
     public function savePoint(Request $request, $id)
     {
         $validated = $request->validate([
             'lat' => 'required|numeric',
             'lng' => 'required|numeric',
+            'accuracy' => 'nullable|numeric',
         ]);
 
         $property = Property::findOrFail($id);
 
-        // 🔒 VALIDACIÓN DE PERMISO
         $user = auth()->user();
         $isOwner = $property->user_id === $user->id;
         $isAdmin = in_array($user->role, ['admin', 'support']);
@@ -549,6 +465,7 @@ class PropertyController extends Controller
         $property->update([
             'lat' => $validated['lat'],
             'lng' => $validated['lng'],
+            'accuracy' => $validated['accuracy'] ?? null,
         ]);
 
         return response()->json([
@@ -559,17 +476,7 @@ class PropertyController extends Controller
     }
 
     /**
-     * Contar total de propiedades
-     */
-    public function count()
-    {
-        return response()->json([
-            'count' => Property::count()
-        ]);
-    }
-
-    /**
-     * Incrementar vistas de una propiedad
+     * Incrementar vistas
      */
     public function incrementViews($id)
     {
@@ -580,6 +487,16 @@ class PropertyController extends Controller
             'success' => true,
             'message' => 'Visita registrada',
             'views' => $property->views
+        ]);
+    }
+
+    /**
+     * Contar propiedades
+     */
+    public function count()
+    {
+        return response()->json([
+            'count' => Property::count()
         ]);
     }
 }
