@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminPropertyController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
@@ -32,7 +33,7 @@ Route::get('properties', [PropertyController::class, 'index']);
 Route::get('properties/count', [PropertyController::class, 'count']);
 Route::get('properties/{property}', [PropertyController::class, 'show']);
 Route::get('users', [UserController::class, 'index']);
-Route::post('/properties/{property}/view', [PropertyController::class, 'incrementViews']);
+Route::post('properties/{property}/view', [PropertyController::class, 'incrementViews']);
 Route::get('dashboard/recent-activity', [AdminDashboardController::class, 'getRecentActivity']);
 
 // ============================================
@@ -49,25 +50,22 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // USERS - CRUD de usuarios
-    // USERS - CRUD de usuarios
     Route::prefix('users')->group(function () {
         Route::get('{id}', [UserController::class, 'show']);
         Route::post('/', [UserController::class, 'store'])->middleware('role:admin,support');
-
-        // Usar POST con _method para permitir archivos en actualización
         Route::post('{id}', [UserController::class, 'update']);
-        // Mantener PUT para actualizaciones sin archivos
         Route::put('{id}', [UserController::class, 'update']);
-
         Route::delete('{id}', [UserController::class, 'destroy'])->middleware('role:admin,support');
     });
 
     // PROPERTIES - Gestión de propiedades
     Route::prefix('properties')->group(function () {
         Route::post('/', [PropertyController::class, 'store']);
+        // ⚠️ IMPORTANTE: Primero POST (para FormData con _method=PUT), luego PUT
+        Route::post('{property}', [PropertyController::class, 'update']);
         Route::put('{property}', [PropertyController::class, 'update']);
         Route::delete('{property}', [PropertyController::class, 'destroy']);
-        Route::post('{property}/point', [PropertyController::class, 'update']);
+        Route::post('{property}/point', [PropertyController::class, 'savePoint']);
     });
 
     // CONTRACTS - Contratos
@@ -76,8 +74,6 @@ Route::middleware('auth:api')->group(function () {
         Route::get('stats', [ContractController::class, 'stats']);
         Route::put('{id}/accept', [ContractController::class, 'accept']);
         Route::put('{id}/reject', [ContractController::class, 'reject']);
-
-        // ⭐ NUEVAS RUTAS PARA VALIDACIÓN ADMIN
         Route::post('{id}/validate', [ContractController::class, 'validate'])
             ->middleware('role:admin,support');
         Route::post('{id}/cancel', [ContractController::class, 'cancel'])
@@ -142,9 +138,36 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
     Route::delete('/notifications/{id}', [NotificationController::class, 'delete']);
 
-    // ADMIN PANEL - RUTAS SOLO PARA ADMIN Y SUPPORT
+    // ============================================
+    // ⭐ ADMIN PANEL - RUTAS SOLO PARA ADMIN Y SUPPORT
+    // ============================================
     Route::prefix('admin')->middleware('role:admin,support')->group(function () {
+
+        // Dashboard
         Route::get('dashboard/stats', [AdminDashboardController::class, 'getStats']);
-        Route::put('{id}/status', [UserController::class, 'updateStatus'])->middleware('role:admin,support');
+
+        // Usuarios
+        Route::put('users/{id}/status', [UserController::class, 'updateStatus']);
+
+        // ⭐ PROPIEDADES - ADMIN
+        Route::prefix('properties')->group(function () {
+            // Estadísticas de propiedades
+            Route::get('stats', [AdminPropertyController::class, 'stats']);
+
+            // Propiedades pendientes de aprobación
+            Route::get('pending', [AdminPropertyController::class, 'pending']);
+
+            // Actividad reciente
+            Route::get('recent-activity', [AdminPropertyController::class, 'recentActivity']);
+
+            // Actualizar estado de aprobación
+            Route::put('{id}/approval', [AdminPropertyController::class, 'updateApproval']);
+
+            // Actualizar visibilidad
+            Route::put('{id}/visibility', [AdminPropertyController::class, 'updateVisibility']);
+
+            // Acción masiva (bulk action)
+            Route::post('bulk-action', [AdminPropertyController::class, 'bulkAction']);
+        });
     });
 });
